@@ -339,6 +339,7 @@ html,body{
         onkeydown="if(event.key==='Enter')doLogin()"></div>
     <div class="l-err" id="lErr"></div>
     <button class="btn btn-gold" style="width:100%;justify-content:center;" onclick="doLogin()">Entrar</button>
+    <button class="btn btn-outline" style="width:100%;justify-content:center;margin-top:8px;" onclick="closeLogin()">← Voltar</button>
   </div>
 </div>
 
@@ -408,7 +409,8 @@ html,body{
     <!-- ═══ CONFIG ═══ -->
     <div id="panel-config" class="panel">
       <div class="wrap">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:12px;">
+          <button class="btn btn-red" style="background:linear-gradient(135deg,#8b0000,#5c0000);" onclick="confirmResetVotes()">🗑 Resetar Palpites</button>
           <button class="btn btn-red" onclick="logoutAdmin()">🚪 Sair</button>
         </div>
 
@@ -1196,7 +1198,27 @@ function doLogin(){
     document.getElementById('lPass').focus();
   }
 }
+function closeLogin(){
+  document.getElementById('loginOverlay').classList.remove('show');
+}
 function logoutAdmin(){adminLogged=false;switchTab('palpites');toast('👋 Sessão encerrada.','');}
+
+async function confirmResetVotes(){
+  if(!confirm('⚠️ Tem certeza que deseja RESETAR TODOS os palpites?\n\nEsta ação apagará todos os votos do Supabase e não pode ser desfeita!')) return;
+  if(!confirm('🔴 CONFIRMAÇÃO FINAL: Resetar TODOS os palpites agora?')) return;
+  toast('⏳ Resetando palpites…','');
+  try{
+    const r=await sbFetch('/rest/v1/palpites?id=gte.0',{method:'DELETE'});
+    // Also reset local voter cache
+    const s=ST.get();
+    ST.set({voters:{}, activeMatch:s.activeMatch, manClosed:s.manClosed, finalResults:s.finalResults});
+    renderMS();
+    toast('✅ Todos os palpites foram resetados!','success');
+    loadRanking();
+  }catch(e){
+    toast('❌ Erro ao resetar: '+e.message,'error');
+  }
+}
 
 // ══════════════════════════════════════════════
 // TOAST
