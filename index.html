@@ -865,7 +865,7 @@ function jogoResetVotos(jogoId){
   toast('🗑 Votos locais resetados.','success');
 }
 
-async async function jogoDeletePalpites(jogoId, jogoNome){
+async function jogoDeletePalpites(jogoId, jogoNome){
   if(!confirm(`⚠️ Apagar TODOS os palpites do jogo:\n"${jogoNome}"\n\nAção irreversível!`)) return;
   if(!confirm('Segunda confirmação. Apagar mesmo?')) return;
   toast('⏳ Apagando…','');
