@@ -712,79 +712,79 @@ function buildRanking(rows, activeJogo){
 async function renderAdminJogos(){
   const grid=document.getElementById('jgGrid');
   if(!grid)return;
-  grid.innerHTML=`<div class="rk-empty" style="padding:16px;">⏳ Carregando…</div>`;
+  grid.innerHTML='<div class="rk-empty" style="padding:16px;">⏳ Carregando jogos...</div>';
   await loadJogos();
   if(!JOGOS.length){
-    grid.innerHTML=`<div class="rk-empty" style="padding:16px;">⚠️ Nenhum jogo na tabela tbjogos.<br><small>Execute o SQL Setup primeiro.</small></div>`;
+    grid.innerHTML='<div class="rk-empty" style="padding:16px;">Nenhum jogo na tabela tbjogos.<br><small>Execute o SQL Setup primeiro.</small></div>';
     return;
   }
   const s=ST.get();
-  let html='<div class="jg-grid">';
-  JOGOS.forEach(j=>{
-    const stClass=`st-${j.status||'inativo'}`;
-    const stLabel=j.status==='aberto'?'🟢 Aberto':j.status==='encerrado'?'🔴 Encerrado':'⚪ Inativo';
+  const rows=JOGOS.map(function(j){
+    const jid=j.jogo_id;
+    const stClass=j.status==='aberto'?'st-aberto':j.status==='encerrado'?'st-encerrado':'st-inativo';
+    const stLabel=j.status==='aberto'?'Aberto':j.status==='encerrado'?'Encerrado':'Inativo';
     const autoClose=deadlinePassed(j);
     const cd=j.status==='aberto'&&!autoClose?countdown(j.deadline_utc):null;
     const urgent=cd&&(new Date(j.deadline_utc)-Date.now())<600000;
-    const voters=((s.voters||{})[j.jogo_id]||[]).length;
+    const voters=((s.voters||{})[jid]||[]).length;
     const hasResult=j.placar_home!=null&&j.placar_away!=null;
-
-    // Status buttons
-    let statusBtns='';
-    if(j.status!=='aberto')
-      statusBtns+=`<button class="btn btn-green" onclick="jogoSetStatus('${j.jogo_id}','aberto')">🟢 Abrir</button>`;
-    if(j.status==='aberto')
-      statusBtns+=`<button class="btn btn-red" onclick="jogoSetStatus('${j.jogo_id}','encerrado')">🔒 Encerrar</button>`;
-    if(j.status!=='inativo'&&j.status!=='aberto')
-      statusBtns+=`<button class="btn btn-gray" onclick="jogoSetStatus('${j.jogo_id}','inativo')" style="cursor:pointer;opacity:.8;">⚪ Inativar</button>`;
-
-    html+=`<div class="jg-card ${stClass}">
-      <div class="jg-flags">${j.flag_home||''} ${j.flag_away||''}</div>
-      <div class="jg-name">${j.nome_home} × ${j.nome_away}</div>
-      <div class="jg-date">📅 ${j.data_label||''}</div>
-      <div class="jg-status">${stLabel}${autoClose?' · Auto':''}</div>
-      <div class="jg-votes">👥 ${voters} voto(s) local | DB: veja ranking</div>
-      ${cd?`<div class="jg-cd${urgent?' urgent':''}" id="jg-cd-${j.jogo_id}">${cd}</div>`:''}
-      ${hasResult?`<div class="jg-result">Placar: ${j.placar_home} × ${j.placar_away}${j.pontuacao_calculada?' ✅':''}</div>`:''}
-
-      <!-- Status control -->
-      <div class="jg-btns" style="margin-bottom:6px;">${statusBtns}</div>
-
-      <!-- Placar final -->
-      <div class="jg-sep">
-        <div class="jg-sep-label">📊 Placar Final</div>
-        <div class="score-mini">
-          <input class="smi" type="number" id="ph-${j.jogo_id}" min="0" max="20"
-            placeholder="${j.placar_home??'?'}" value="${j.placar_home??''}">
-          <span class="smi-dash">×</span>
-          <input class="smi" type="number" id="pa-${j.jogo_id}" min="0" max="20"
-            placeholder="${j.placar_away??'?'}" value="${j.placar_away??''}">
-        </div>
-        <div class="jg-btns">
-          <button class="btn btn-blue" onclick="jogoSavePlacar('${j.jogo_id}')">💾 Salvar Placar</button>
-          <button class="btn btn-blue" style="background:linear-gradient(135deg,#7b2ff7,#5a1eb0);"
-            onclick="jogoCalcPontuacao('${j.jogo_id}','${j.nome_home} x ${j.nome_away}')">⚡ Calcular Pontuação</button>
-          <button class="btn btn-gray" onclick="jogoZerarPlacar('${j.jogo_id}')"
-            style="cursor:pointer;opacity:.85;">🔄 Zerar Placar</button>
-        </div>
-      </div>
-
-      <!-- Reset -->
-      <div class="jg-sep">
-        <div class="jg-sep-label">⚠️ Resetar</div>
-        <div class="jg-btns">
-          <button class="btn" style="background:rgba(239,35,60,.1);color:var(--red);border:1px solid rgba(239,35,60,.3);"
-            onclick="jogoResetVotos('${j.jogo_id}')">🗑 Votos locais</button>
-          <button class="btn" style="background:rgba(239,35,60,.1);color:var(--red);border:1px solid rgba(239,35,60,.3);"
-            onclick="jogoDeletePalpites('${j.jogo_id}','${j.nome_home} x ${j.nome_away}')">🗑 Apagar palpites (DB)</button>
-        </div>
-      </div>
-    </div>`;
+    const ph=j.placar_home!=null?j.placar_home:'';
+    const pa=j.placar_away!=null?j.placar_away:'';
+    const php=j.placar_home!=null?j.placar_home:'?';
+    const pap=j.placar_away!=null?j.placar_away:'?';
+    const cdHtml=cd?('<div class="jg-cd'+(urgent?' urgent':'')+'" id="jg-cd-'+jid+'">'+cd+'</div>'):'';
+    const resHtml=hasResult?('<div class="jg-result">Placar: '+j.placar_home+' x '+j.placar_away+(j.pontuacao_calculada?' OK':'')+'</div>'):'';
+    const btnAbrir=j.status!=='aberto'?('<button class="btn btn-green" data-action="open" data-jid="'+jid+'">Abrir</button>'):'';
+    const btnEnc=j.status==='aberto'?('<button class="btn btn-red" data-action="close" data-jid="'+jid+'">Encerrar</button>'):'';
+    const btnInat=(j.status!=='inativo'&&j.status!=='aberto')?('<button class="btn btn-gray" data-action="inactive" data-jid="'+jid+'" style="cursor:pointer">Inativar</button>'):'';
+    return '<div class="jg-card '+stClass+'" data-jid="'+jid+'">'
+      +'<div class="jg-flags">'+j.flag_home+' '+j.flag_away+'</div>'
+      +'<div class="jg-name">'+j.nome_home+' x '+j.nome_away+'</div>'
+      +'<div class="jg-date">'+j.data_label+'</div>'
+      +'<div class="jg-status">'+stLabel+(autoClose?' (auto)':'')+'</div>'
+      +'<div class="jg-votes">Votos locais: '+voters+'</div>'
+      +cdHtml+resHtml
+      +'<div class="jg-btns" style="margin-bottom:6px;">'+btnAbrir+btnEnc+btnInat+'</div>'
+      +'<div class="jg-sep">'
+        +'<div class="jg-sep-label">Placar Final</div>'
+        +'<div class="score-mini">'
+          +'<input class="smi" type="number" id="ph-'+jid+'" min="0" max="20" placeholder="'+php+'" value="'+ph+'">'
+          +'<span class="smi-dash">x</span>'
+          +'<input class="smi" type="number" id="pa-'+jid+'" min="0" max="20" placeholder="'+pap+'" value="'+pa+'">'
+        +'</div>'
+        +'<div class="jg-btns">'
+          +'<button class="btn btn-blue" data-action="saveplacar" data-jid="'+jid+'">Salvar Placar</button>'
+          +'<button class="btn btn-blue" data-action="calcpts" data-jid="'+jid+'" style="background:linear-gradient(135deg,#7b2ff7,#5a1eb0);">Calcular Pontos</button>'
+          +'<button class="btn btn-gray" data-action="zeroplacar" data-jid="'+jid+'" style="cursor:pointer">Zerar Placar</button>'
+        +'</div>'
+      +'</div>'
+      +'<div class="jg-sep">'
+        +'<div class="jg-sep-label">Resetar</div>'
+        +'<div class="jg-btns">'
+          +'<button class="btn" data-action="resetvotos" data-jid="'+jid+'" style="background:rgba(239,35,60,.1);color:var(--red);border:1px solid rgba(239,35,60,.3);">Votos locais</button>'
+          +'<button class="btn" data-action="deletepalpites" data-jid="'+jid+'" style="background:rgba(239,35,60,.1);color:var(--red);border:1px solid rgba(239,35,60,.3);">Apagar palpites (DB)</button>'
+        +'</div>'
+      +'</div>'
+    +'</div>';
   });
-  html+='</div>';
-  document.getElementById('jgGrid').innerHTML=html;
+  grid.innerHTML='<div class="jg-grid">'+rows.join('')+'</div>';
+  grid.onclick=async function(e){
+    var btn=e.target.closest('[data-action]');
+    if(!btn)return;
+    var action=btn.dataset.action;
+    var jid=btn.dataset.jid;
+    var jogo=JOGOS.find(function(x){return x.jogo_id===jid;});
+    if(!jogo)return;
+    if(action==='open')          await jogoSetStatus(jid,'aberto');
+    else if(action==='close')    await jogoSetStatus(jid,'encerrado');
+    else if(action==='inactive') await jogoSetStatus(jid,'inativo');
+    else if(action==='saveplacar')    await jogoSavePlacar(jid);
+    else if(action==='calcpts')       await jogoCalcPontuacao(jid,jogo.nome_home+' x '+jogo.nome_away);
+    else if(action==='zeroplacar')    await jogoZerarPlacar(jid);
+    else if(action==='resetvotos')    jogoResetVotos(jid);
+    else if(action==='deletepalpites') await jogoDeletePalpites(jid,jogo.nome_home+' x '+jogo.nome_away);
+  };
 }
-
 // ══════════════════════════════════════════
 // ADMIN JOGO ACTIONS
 // ══════════════════════════════════════════
@@ -858,8 +858,7 @@ async function jogoCalcPontuacao(jogoId, jogoNome){
 }
 
 function jogoResetVotos(jogoId){
-  if(!confirm('Resetar votos locais deste jogo?
-(Libera e-mails para votar novamente)')) return;
+  if(!confirm('Resetar votos locais deste jogo?\n(Libera e-mails para votar novamente)')) return;
   const s=ST.get(), voters=s.voters||{};
   voters[jogoId]=[]; ST.set({voters});
   renderAdminJogos(); renderVote();
