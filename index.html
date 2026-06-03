@@ -242,6 +242,91 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
   .row2,.jg-grid{grid-template-columns:1fr}
 }
 @media(max-width:420px){.pform{grid-template-columns:1fr}}
+
+/* ── JOGO FORM MODAL ──────────────────────────────── */
+.modal-overlay{display:none;position:fixed;inset:0;z-index:600;
+  background:rgba(6,9,14,.97);backdrop-filter:blur(12px);
+  justify-content:center;align-items:flex-start;overflow-y:auto;padding:20px;}
+.modal-overlay.show{display:flex;}
+.modal-card{background:var(--card);border:1px solid var(--bdh);border-radius:14px;
+  padding:24px 26px;width:100%;max-width:700px;position:relative;margin:auto;}
+.modal-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  border-radius:14px 14px 0 0;background:linear-gradient(90deg,var(--gold),var(--gl),var(--gold));}
+.modal-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;
+  color:var(--gold);margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+.modal-title button{margin-left:auto;padding:5px 14px;font-size:10px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.form-grid.col3{grid-template-columns:1fr 1fr 1fr;}
+.form-grid.col1{grid-template-columns:1fr;}
+.form-group{display:flex;flex-direction:column;gap:4px;}
+.form-group label{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;
+  letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+.form-group input,.form-group select{padding:8px 11px;background:var(--el);
+  border:1px solid var(--bd);border-radius:7px;color:var(--txt);
+  font-family:'Barlow',sans-serif;font-size:13px;outline:none;transition:border-color .2s;
+  -webkit-appearance:none;}
+.form-group input:focus,.form-group select:focus{border-color:var(--gold);box-shadow:0 0 0 2px rgba(240,165,0,.1);}
+.form-group select option{background:var(--el);color:var(--txt);}
+.form-sep{grid-column:1/-1;border-top:1px solid var(--bd);padding-top:10px;
+  font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:2px;
+  text-transform:uppercase;color:var(--muted);}
+.form-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:14px;
+  padding-top:12px;border-top:1px solid var(--bd);}
+.jg-list-header{display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+@media(max-width:560px){
+  .form-grid{grid-template-columns:1fr;}
+  .form-grid.col3{grid-template-columns:1fr 1fr;}
+}
+
+/* ── JOGO MODAL ─────────────────────────────────────────────────────────── */
+#jogoModal{display:none;position:fixed;inset:0;z-index:600;
+  background:rgba(6,9,14,.96);backdrop-filter:blur(10px);
+  justify-content:center;align-items:center;padding:12px;}
+#jogoModal.show{display:flex;}
+.jm-card{background:var(--card);border:1px solid var(--bdh);border-radius:14px;
+  width:100%;max-width:680px;max-height:92vh;overflow-y:auto;
+  box-shadow:0 20px 80px rgba(0,0,0,.7),var(--glow);position:relative;}
+.jm-card::-webkit-scrollbar{width:3px;}
+.jm-card::-webkit-scrollbar-thumb{background:rgba(240,165,0,.3);border-radius:3px;}
+.jm-head{display:flex;align-items:center;justify-content:space-between;
+  padding:14px 18px;border-bottom:1px solid var(--bd);position:sticky;top:0;
+  background:var(--card);z-index:1;}
+.jm-head::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  border-radius:14px 14px 0 0;background:linear-gradient(90deg,var(--gold),var(--gl),var(--gold));}
+.jm-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;color:var(--gold);}
+.jm-close{background:transparent;border:none;color:var(--muted);font-size:20px;
+  cursor:pointer;padding:4px 8px;border-radius:6px;transition:color .2s;}
+.jm-close:hover{color:var(--txt);}
+.jm-body{padding:16px 18px;}
+.jm-section{margin-bottom:14px;}
+.jm-section-title{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;
+  letter-spacing:3px;text-transform:uppercase;color:var(--gold);
+  margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--bd);}
+.jm-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.jm-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.jm-grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;}
+.jf{display:flex;flex-direction:column;}
+.jf label{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;
+  letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.jf input,.jf select,.jf textarea{
+  padding:8px 10px;background:var(--el);border:1px solid var(--bd);
+  border-radius:7px;color:var(--txt);font-family:'Barlow',sans-serif;font-size:13px;
+  outline:none;transition:border-color .2s;-webkit-appearance:none;}
+.jf input:focus,.jf select:focus,.jf textarea:focus{
+  border-color:var(--gold);box-shadow:0 0 0 2px rgba(240,165,0,.1);}
+.jf select option{background:var(--el);color:var(--txt);}
+.jf .flag-preview{font-size:22px;margin-top:4px;min-height:28px;}
+.jf .code-preview{margin-top:4px;min-height:22px;}
+.jf .code-preview img{height:22px;border-radius:3px;vertical-align:middle;}
+.jm-foot{display:flex;gap:8px;flex-wrap:wrap;padding:12px 18px;
+  border-top:1px solid var(--bd);background:var(--card);
+  position:sticky;bottom:0;z-index:1;}
+.jm-foot .btn{flex:1;justify-content:center;min-width:100px;}
+@media(max-width:480px){
+  .jm-grid2,.jm-grid3,.jm-grid4{grid-template-columns:1fr 1fr;}
+}
+
 </style>
 </head>
 <body>
@@ -340,8 +425,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 
         <!-- JOGOS CONTROL -->
         <div class="cfg-card">
-          <h2>⚽ Controle de Jogos</h2>
-          <p class="cfg-desc">Status, placar final e reset — lidos e salvos na tabela <strong>tbjogos</strong>.</p>
+          <div class="jg-list-header">
+            <div>
+              <h2 style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;color:var(--gold);margin-bottom:2px;">⚽ Controle de Jogos</h2>
+              <p class="cfg-desc" style="margin:0;">Status, placar e cadastro — tabela <strong>tbjogos</strong>.</p>
+            </div>
+            <button class="btn btn-gold" onclick="openJogoForm(null)">＋ Cadastrar Jogo</button>
+          </div>
           <div id="jgGrid"><div class="rk-empty" style="padding:20px;">⏳ Carregando jogos…</div></div>
         </div>
 
@@ -739,7 +829,7 @@ async function renderAdminJogos(){
     const btnInat=(j.status!=='inativo'&&j.status!=='aberto')?('<button class="btn btn-gray" data-action="inactive" data-jid="'+jid+'" style="cursor:pointer">Inativar</button>'):'';
     return '<div class="jg-card '+stClass+'" data-jid="'+jid+'">'
       +'<div class="jg-flags">'+j.flag_home+' '+j.flag_away+'</div>'
-      +'<div class="jg-name">'+j.nome_home+' x '+j.nome_away+'</div>'
+      +'<div class="jg-name" style="display:flex;align-items:center;justify-content:space-between;">'+j.nome_home+' x '+j.nome_away+btnEdit+'</div>'
       +'<div class="jg-date">'+j.data_label+'</div>'
       +'<div class="jg-status">'+stLabel+(autoClose?' (auto)':'')+'</div>'
       +'<div class="jg-votes">Votos locais: '+voters+'</div>'
@@ -759,7 +849,10 @@ async function renderAdminJogos(){
         +'</div>'
       +'</div>'
       +'<div class="jg-sep">'
-        +'<div class="jg-sep-label">Resetar</div>'
+        +'<div class="jg-sep-label">Editar / Resetar</div>'
+        +'<div class="jg-btns" style="margin-bottom:5px;">'
+          +'<button class="btn btn-outline" data-action="editjogo" data-jid="'+jid+'">✏️ Editar</button>'
+        +'</div>'
         +'<div class="jg-btns">'
           +'<button class="btn" data-action="resetvotos" data-jid="'+jid+'" style="background:rgba(239,35,60,.1);color:var(--red);border:1px solid rgba(239,35,60,.3);">Votos locais</button>'
           +'<button class="btn" data-action="deletepalpites" data-jid="'+jid+'" style="background:rgba(239,35,60,.1);color:var(--red);border:1px solid rgba(239,35,60,.3);">Apagar palpites (DB)</button>'
@@ -775,7 +868,8 @@ async function renderAdminJogos(){
     var jid=btn.dataset.jid;
     var jogo=JOGOS.find(function(x){return x.jogo_id===jid;});
     if(!jogo)return;
-    if(action==='open')          await jogoSetStatus(jid,'aberto');
+    if(action==='edit')           openJogoForm(JOGOS.find(x=>x.jogo_id===jid));
+    else if(action==='open')     await jogoSetStatus(jid,'aberto');
     else if(action==='close')    await jogoSetStatus(jid,'encerrado');
     else if(action==='inactive') await jogoSetStatus(jid,'inativo');
     else if(action==='saveplacar')    await jogoSavePlacar(jid);
@@ -783,6 +877,7 @@ async function renderAdminJogos(){
     else if(action==='zeroplacar')    await jogoZerarPlacar(jid);
     else if(action==='resetvotos')    jogoResetVotos(jid);
     else if(action==='deletepalpites') await jogoDeletePalpites(jid,jogo.nome_home+' x '+jogo.nome_away);
+    else if(action==='editjogo')      openJogoForm(jogo);
   };
 }
 // ══════════════════════════════════════════
@@ -907,21 +1002,25 @@ function showSqlSetup(){
 CREATE TABLE IF NOT EXISTS tbjogos (
   id            BIGSERIAL PRIMARY KEY,
   jogo_id       TEXT NOT NULL UNIQUE,       -- ex: C1, C2, C3
+  fase          TEXT,                       -- ex: Grupo C, Oitavas, Final
   nome_home     TEXT NOT NULL,
   nome_away     TEXT NOT NULL,
-  flag_home     TEXT,
+  flag_home     TEXT,                       -- emoji: 🇧🇷
   flag_away     TEXT,
-  flag_code_home TEXT,
+  flag_code_home TEXT,                      -- flagcdn code: br
   flag_code_away TEXT,
-  data_label    TEXT,
+  data_label    TEXT,                       -- ex: 13/Jun · Sáb · 19h
   cidade        TEXT,
-  kickoff_utc   TIMESTAMPTZ,
-  deadline_utc  TIMESTAMPTZ,
+  kickoff_utc   TIMESTAMPTZ,               -- horário início UTC
+  deadline_utc  TIMESTAMPTZ,               -- prazo votação UTC (1h antes)
   status        TEXT DEFAULT 'inativo',     -- inativo | aberto | encerrado
-  placar_home   INTEGER,
+  placar_home   INTEGER,                    -- resultado final
   placar_away   INTEGER,
   pontuacao_calculada BOOLEAN DEFAULT FALSE
 );
+
+-- Add fase column if upgrading existing table:
+-- ALTER TABLE tbjogos ADD COLUMN IF NOT EXISTS fase TEXT;
 
 ALTER TABLE tbjogos ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "tbjogos_select" ON tbjogos FOR SELECT USING (true);
@@ -1073,6 +1172,290 @@ loadJogos().then(()=>{
     },1000);
   }
 });
+
+// ══════════════════════════════════════════
+// JOGO FORM — CADASTRO / EDIÇÃO
+// ══════════════════════════════════════════
+function openJogoForm(jogo){
+  // jogo = null → new | jogo = object → edit
+  const modal = document.getElementById('jogoModal');
+  const isNew = !jogo;
+
+  document.getElementById('modalTitleText').textContent = isNew ? '➕ Cadastrar Jogo' : '✏️ Editar Jogo: '+jogo.jogo_id;
+  document.getElementById('btnDeleteJogo').style.display = isNew ? 'none' : 'inline-flex';
+
+  // Populate fields
+  document.getElementById('fJogoId').value      = jogo?.id ?? '';
+  document.getElementById('fJogoKey').value     = jogo?.jogo_id ?? '';
+  document.getElementById('fJogoKey').readOnly  = !isNew; // can't change PK on edit
+  document.getElementById('fJogoKey').style.opacity = isNew ? '1' : '.5';
+  document.getElementById('fStatus').value      = jogo?.status ?? 'inativo';
+  document.getElementById('fFase').value         = jogo?.fase ?? '';
+  document.getElementById('fNomeHome').value    = jogo?.nome_home ?? '';
+  document.getElementById('fNomeAway').value    = jogo?.nome_away ?? '';
+  document.getElementById('fFlagHome').value    = jogo?.flag_home ?? '';
+  document.getElementById('fFlagAway').value    = jogo?.flag_away ?? '';
+  document.getElementById('fCodeHome').value    = jogo?.flag_code_home ?? '';
+  document.getElementById('fCodeAway').value    = jogo?.flag_code_away ?? '';
+  document.getElementById('fDataLabel').value   = jogo?.data_label ?? '';
+  document.getElementById('fCidade').value      = jogo?.cidade ?? '';
+  document.getElementById('fKickoff').value     = jogo?.kickoff_utc ? toLocalInput(jogo.kickoff_utc) : '';
+  document.getElementById('fDeadline').value    = jogo?.deadline_utc ? toLocalInput(jogo.deadline_utc) : '';
+  document.getElementById('fPlacarHome').value  = jogo?.placar_home ?? '';
+  document.getElementById('fPlacarAway').value  = jogo?.placar_away ?? '';
+  document.getElementById('fPontuacaoCalc').value = jogo?.pontuacao_calculada ? 'true' : 'false';
+
+  previewFlags();
+  modal.classList.add('show');
+}
+
+function closeJogoForm(){
+  document.getElementById('jogoModal').classList.remove('show');
+}
+
+// Convert UTC ISO string to datetime-local input value
+function toLocalInput(utcStr){
+  if(!utcStr) return '';
+  const d = new Date(utcStr);
+  const pad = n => String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())
+    +'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+}
+
+// Convert datetime-local value to UTC ISO string
+function toUTC(localVal){
+  if(!localVal) return null;
+  return new Date(localVal).toISOString();
+}
+
+async function saveJogo(){
+  const jogoKey = document.getElementById('fJogoKey').value.trim();
+  const nomeHome = document.getElementById('fNomeHome').value.trim();
+  const nomeAway = document.getElementById('fNomeAway').value.trim();
+  if(!jogoKey){toast('⚠️ Informe o ID do jogo!','error');return;}
+  if(!nomeHome||!nomeAway){toast('⚠️ Informe os nomes dos times!','error');return;}
+
+  const ph = document.getElementById('fPlacarHome').value;
+  const pa = document.getElementById('fPlacarAway').value;
+
+  const payload = {
+    jogo_id:             jogoKey,
+    status:              document.getElementById('fStatus').value,
+    fase:                document.getElementById('fFase').value.trim() || null,
+    nome_home:           nomeHome,
+    nome_away:           nomeAway,
+    flag_home:           document.getElementById('fFlagHome').value.trim() || null,
+    flag_away:           document.getElementById('fFlagAway').value.trim() || null,
+    flag_code_home:      document.getElementById('fCodeHome').value.trim() || null,
+    flag_code_away:      document.getElementById('fCodeAway').value.trim() || null,
+    data_label:          document.getElementById('fDataLabel').value.trim() || null,
+    cidade:              document.getElementById('fCidade').value.trim() || null,
+    kickoff_utc:         toUTC(document.getElementById('fKickoff').value) || null,
+    deadline_utc:        toUTC(document.getElementById('fDeadline').value) || null,
+    placar_home:         ph !== '' ? parseInt(ph) : null,
+    placar_away:         pa !== '' ? parseInt(pa) : null,
+    pontuacao_calculada: document.getElementById('fPontuacaoCalc').value === 'true',
+  };
+
+  const existingId = document.getElementById('fJogoId').value;
+  const isNew = !existingId;
+  toast('⏳ Salvando…','');
+
+  try{
+    let r;
+    if(isNew){
+      // INSERT
+      r = await sbFetch('/rest/v1/tbjogos', {
+        method:'POST',
+        prefer:'return=minimal',
+        body: JSON.stringify(payload)
+      });
+    } else {
+      // UPDATE by jogo_id
+      r = await sbFetch('/rest/v1/tbjogos?jogo_id=eq.'+encodeURIComponent(jogoKey), {
+        method:'PATCH',
+        prefer:'return=minimal',
+        body: JSON.stringify(payload)
+      });
+    }
+    if(r.ok || r.status===201 || r.status===204){
+      toast('✅ Jogo '+jogoKey+' '+(isNew?'cadastrado':'atualizado')+'!','success');
+      closeJogoForm();
+      await loadJogos();
+      renderAdminJogos();
+    } else {
+      const err = await r.text();
+      toast('❌ Erro ao salvar: '+err.substring(0,80),'error');
+    }
+  }catch(e){
+    toast('❌ '+e.message,'error');
+  }
+}
+
+async function deleteJogo(){
+  const jogoKey = document.getElementById('fJogoKey').value.trim();
+  if(!jogoKey) return;
+  if(!confirm('Excluir o jogo "'+jogoKey+'" permanentemente?\nIsso NÃO apaga os palpites.')) return;
+  toast('⏳ Excluindo…','');
+  try{
+    const r = await sbFetch('/rest/v1/tbjogos?jogo_id=eq.'+encodeURIComponent(jogoKey), {method:'DELETE'});
+    if(r.ok || r.status===204){
+      toast('✅ Jogo '+jogoKey+' excluído.','success');
+      closeJogoForm();
+      await loadJogos();
+      renderAdminJogos();
+    } else {
+      toast('❌ Erro ao excluir.','error');
+    }
+  }catch(e){
+    toast('❌ '+e.message,'error');
+  }
+}
+
+
+
+// Auto-deadline: 1h before kickoff
+function autoDeadline(){
+  const k=document.getElementById('fKickoff').value;
+  if(!k)return;
+  const ko=new Date(k);
+  ko.setHours(ko.getHours()-1);
+  const off=ko.getTimezoneOffset();
+  const local=new Date(ko.getTime()-off*60000);
+  document.getElementById('fDeadline').value=local.toISOString().slice(0,16);
+}
+
+// Live flag preview
+function previewFlags(){
+  const fh=document.getElementById('fFlagHome').value;
+  const fa=document.getElementById('fFlagAway').value;
+  const ch=document.getElementById('fCodeHome').value.trim().toLowerCase();
+  const ca=document.getElementById('fCodeAway').value.trim().toLowerCase();
+  const ph=document.getElementById('prevFlagHome');
+  const pa=document.getElementById('prevFlagAway');
+  const phc=document.getElementById('prevCodeHome');
+  const pac=document.getElementById('prevCodeAway');
+  if(ph)ph.textContent=fh;
+  if(pa)pa.textContent=fa;
+  if(phc)phc.innerHTML=ch?'<img src="https://flagcdn.com/w40/'+ch+'.png" height="20" style="border-radius:3px;vertical-align:middle;" onerror="this.style.display=\'none\'">':'';
+  if(pac)pac.innerHTML=ca?'<img src="https://flagcdn.com/w40/'+ca+'.png" height="20" style="border-radius:3px;vertical-align:middle;" onerror="this.style.display=\'none\'">':'';
+}
+
+function closeJogoModal(){ closeJogoForm(); }
+
 </script>
+
+<!-- MODAL: CADASTRO / EDIÇÃO DE JOGO -->
+<div class="modal-overlay" id="jogoModal">
+  <div class="modal-card">
+    <div class="modal-title">
+      <span id="modalTitleText">➕ Cadastrar Jogo</span>
+      <button class="btn btn-outline" onclick="closeJogoForm()">✕ Fechar</button>
+    </div>
+
+    <form onsubmit="return false;">
+      <!-- IDs ocultos -->
+      <input type="hidden" id="fJogoId" placeholder="">
+
+      <!-- Identificação -->
+      <div class="form-sep">🔑 Identificação</div>
+      <div class="form-grid col3">
+        <div class="form-group">
+          <label>ID do Jogo *</label>
+          <input type="text" id="fJogoKey" placeholder="Ex: C1, D2, SF1" maxlength="10">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="fStatus">
+            <option value="inativo">⚪ Inativo</option>
+            <option value="aberto">🟢 Aberto</option>
+            <option value="encerrado">🔴 Encerrado</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Fase / Grupo</label>
+          <input type="text" id="fFase" placeholder="Ex: Grupo C, Oitavas">
+        </div>
+      </div>
+
+      <!-- Times -->
+      <div class="form-sep">🏳️ Times</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nome Time Casa *</label>
+          <input type="text" id="fNomeHome" placeholder="Ex: Brasil">
+        </div>
+        <div class="form-group">
+          <label>Nome Time Fora *</label>
+          <input type="text" id="fNomeAway" placeholder="Ex: Marrocos">
+        </div>
+        <div class="form-group">
+          <label>Emoji Bandeira Casa</label>
+          <input type="text" id="fFlagHome" placeholder="🇧🇷" oninput="previewFlags()">
+        </div>
+        <div class="form-group">
+          <label>Emoji Bandeira Fora</label>
+          <input type="text" id="fFlagAway" placeholder="🇲🇦" oninput="previewFlags()">
+        </div>
+        <div class="form-group">
+          <label>Código Bandeira Casa <small style="color:var(--muted);font-size:9px;">(flagcdn.com)</small></label>
+          <input type="text" id="fCodeHome" placeholder="br" maxlength="10" oninput="previewFlags()">
+        </div>
+        <div class="form-group">
+          <label>Código Bandeira Fora</label>
+          <input type="text" id="fCodeAway" placeholder="ma" maxlength="10" oninput="previewFlags()">
+        </div>
+      </div>
+
+      <!-- Data / Local -->
+      <div class="form-sep">📅 Data e Local</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Rótulo de Data (exibido)</label>
+          <input type="text" id="fDataLabel" placeholder="Ex: 13/Jun · Sáb · 19h (Brasília)">
+        </div>
+        <div class="form-group">
+          <label>Cidade</label>
+          <input type="text" id="fCidade" placeholder="Ex: Nova York/NJ">
+        </div>
+        <div class="form-group">
+          <label>Data/Hora Início UTC</label>
+          <input type="datetime-local" id="fKickoff" style="color-scheme:dark;" onchange="autoDeadline()">
+        </div>
+        <div class="form-group">
+          <label>Prazo Votação UTC <small style="color:var(--muted);font-size:9px;">(1h antes)</small></label>
+          <input type="datetime-local" id="fDeadline" style="color-scheme:dark;">
+        </div>
+      </div>
+
+      <!-- Placar final -->
+      <div class="form-sep">📊 Placar Final (preencher após o jogo)</div>
+      <div class="form-grid col3">
+        <div class="form-group">
+          <label>Gols Casa</label>
+          <input type="number" id="fPlacarHome" min="0" max="30" placeholder="—">
+        </div>
+        <div class="form-group">
+          <label>Gols Fora</label>
+          <input type="number" id="fPlacarAway" min="0" max="30" placeholder="—">
+        </div>
+        <div class="form-group">
+          <label>Pontuação Calculada</label>
+          <select id="fPontuacaoCalc">
+            <option value="false">Não</option>
+            <option value="true">Sim</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-outline" type="button" onclick="closeJogoForm()">Cancelar</button>
+        <button class="btn btn-red"    type="button" id="btnDeleteJogo" onclick="deleteJogo()" style="display:none;">🗑 Excluir Jogo</button>
+        <button class="btn btn-gold"   type="button" onclick="saveJogo()">💾 Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 </body>
 </html>
