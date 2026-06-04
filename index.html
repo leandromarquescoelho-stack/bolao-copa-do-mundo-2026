@@ -735,16 +735,36 @@ async function submitVote(){
       voters[j.jogo_id].push(email); ST.set({voters});
       toast('⚠️ E-mail já registrado!','error'); await renderVote(); return;
     }
+    const payload={jogo_id:j.jogo_id,jogo:jogoNome,nome,email,
+      data_voto:fmtDT(new Date()),placar_casa:parseInt(h),placar_fora:parseInt(a),pontuacao:0};
+    console.log('Enviando palpite payload:',JSON.stringify(payload));
     const r=await sbFetch('/rest/v1/tbpalpites',{method:'POST',prefer:'return=minimal',
-      body:JSON.stringify({jogo_id:j.jogo_id,jogo:jogoNome,nome,email,
-        data_voto:fmtDT(new Date()),placar_casa:parseInt(h),placar_fora:parseInt(a),pontuacao:0})});
+      body:JSON.stringify(payload)});
     if(r.status===201){
       if(!voters[j.jogo_id])voters[j.jogo_id]=[];
       voters[j.jogo_id].push(email); ST.set({voters});
       toast(`✅ ${j.nome_home} ${h}×${a} ${j.nome_away} — Enviado!`,'success');
       setTimeout(renderVote,500);
-    } else throw new Error('HTTP '+r.status);
-  }catch(e){toast('❌ Erro: '+e.message,'error');}
+    } else {
+      const errText=await r.text();
+      let errMsg=errText;
+      try{const ej=JSON.parse(errText);errMsg=ej.message||ej.hint||ej.details||errText;}catch(e2){}
+      console.error('submitVote error HTTP '+r.status+':',errMsg);
+      if(r.status===400){
+        if(errMsg.toLowerCase().includes('column')||errMsg.toLowerCase().includes('exist'))
+          toast('❌ Coluna ausente na tabela. Acesse Config → Diagnosticar Tabelas.','error');
+        else
+          toast('❌ Erro 400: '+errMsg.slice(0,100),'error');
+      } else if(r.status===403){
+        toast('❌ Sem permissão (403). Verifique políticas RLS da tbpalpites.','error');
+      } else {
+        toast('❌ Erro '+r.status+': '+errMsg.slice(0,80),'error');
+      }
+    }
+  }catch(e){
+    console.error('submitVote exception:',e);
+    toast('❌ Erro de conexão: '+e.message,'error');
+  }
 }
 
 // ══════════════════════════════════════════
@@ -1342,6 +1362,99 @@ function previewFlags(){
 }
 
 function closeJogoModal(){ closeJogoForm(); }
+
+
+// ══════════════════════════════════════════
+// TABLE DIAGNOSTIC
+// ══════════════════════════════════════════
+async function diagnoseTables(){
+  toast('⏳ Diagnosticando tabelas…','');
+  const results = [];
+
+  // Test tbjogos
+  try{
+    const r = await sbFetch('/rest/v1/tbjogos?select=id,jogo_id,status&limit=1');
+    const status = r.status;
+    const body = await r.text();
+    if(status===200){
+      const rows = JSON.parse(body);
+      results.push('✅ tbjogos: OK ('+rows.length+' jogo(s) encontrado(s))');
+    } else {
+      results.push('❌ tbjogos: HTTP '+status+' — '+body.slice(0,80));
+    }
+  }catch(e){ results.push('❌ tbjogos: '+e.message); }
+
+  // Test tbpalpites read
+  try{
+    const r = await sbFetch('/rest/v1/tbpalpites?select=id,jogo_id,placar_casa,placar_fora&limit=1');
+    const status = r.status;
+    const body = await r.text();
+    if(status===200){
+      results.push('✅ tbpalpites: OK (leitura funcionando)');
+    } else {
+      results.push('❌ tbpalpites leitura: HTTP '+status+' — '+body.slice(0,80));
+    }
+  }catch(e){ results.push('❌ tbpalpites: '+e.message); }
+
+  // Test tbpalpites INSERT with test row
+  try{
+    const testPayload = {
+      jogo_id:'_TEST_',jogo:'Teste x Diagnóstico',nome:'Sistema',
+      email:'diag@bolao.test',data_voto:'teste',
+      placar_casa:0,placar_fora:0,pontuacao:0
+    };
+    const r = await sbFetch('/rest/v1/tbpalpites',{
+      method:'POST',prefer:'return=minimal',
+      body:JSON.stringify(testPayload)
+    });
+    const status = r.status;
+    const body = await r.text();
+    if(status===201){
+      results.push('✅ tbpalpites INSERT: OK — colunas corretas!');
+      // Clean up test row
+      await sbFetch('/rest/v1/tbpalpites?jogo_id=eq._TEST_',{method:'DELETE'});
+    } else {
+      let errMsg = body;
+      try{ const j=JSON.parse(body); errMsg=j.message||j.hint||j.details||body; }catch(e2){}
+      results.push('❌ tbpalpites INSERT: HTTP '+status+' — '+errMsg.slice(0,120));
+      // Show the fix SQL
+      const fixSql = 'DROP TABLE IF EXISTS tbpalpites;\n'+
+        'CREATE TABLE tbpalpites (\n'+
+        '  id BIGSERIAL PRIMARY KEY,\n'+
+        '  created_at TIMESTAMPTZ DEFAULT NOW(),\n'+
+        '  jogo_id TEXT NOT NULL,\n'+
+        '  jogo TEXT NOT NULL,\n'+
+        '  nome TEXT NOT NULL,\n'+
+        '  email TEXT NOT NULL,\n'+
+        '  data_voto TEXT,\n'+
+        '  placar_casa INTEGER,\n'+
+        '  placar_fora INTEGER,\n'+
+        '  pontuacao INTEGER DEFAULT 0\n'+
+        ');\n'+
+        'ALTER TABLE tbpalpites ENABLE ROW LEVEL SECURITY;\n'+
+        'CREATE POLICY "p_all" ON tbpalpites FOR ALL USING (true) WITH CHECK (true);';
+      results.push('');
+      results.push('⚠️ Execute este SQL para recriar a tabela corretamente:');
+      results.push(fixSql);
+    }
+  }catch(e){ results.push('❌ tbpalpites INSERT exception: '+e.message); }
+
+  // Display results
+  const box = document.getElementById('sqlBox');
+  const html = results.map(r=>{
+    if(r.startsWith('✅')) return '<div style="color:var(--green);font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:1px;margin-bottom:6px;">'+r+'</div>';
+    if(r.startsWith('❌')) return '<div style="color:var(--red);font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:1px;margin-bottom:6px;">'+r+'</div>';
+    if(r.startsWith('⚠️')) return '<div style="color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1px;margin:8px 0 4px;">'+r+'</div>';
+    if(r==='') return '<br>';
+    return '<pre style="background:var(--el);padding:10px;border-radius:6px;font-size:11px;color:#e8eaf0;white-space:pre-wrap;margin-bottom:8px;"><code>'+r+'</code></pre>'+
+           '<button class="btn btn-blue" style="font-size:11px;margin-bottom:8px;" onclick="navigator.clipboard.writeText(`'+r.replace(/`/g,'\\`')+'`).then(()=>toast('✅ SQL copiado!','success'))">📋 Copiar SQL de Reparo</button>';
+  }).join('');
+
+  box.innerHTML = '<div style="margin-top:12px;padding:14px;background:var(--el);border-radius:10px;border:1px solid var(--bd);">'
+    +'<div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">🔍 Resultado do Diagnóstico</div>'
+    +html+'</div>';
+  toast('🔍 Diagnóstico concluído!','success');
+}
 
 </script>
 
