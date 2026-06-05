@@ -773,6 +773,15 @@ async function submitVote() {
       if (!voters[j.jogo_id]) voters[j.jogo_id] = [];
       voters[j.jogo_id].push(email); ST.set({voters: voters});
       toast(j.nome_home + ' ' + h + 'x' + a + ' ' + j.nome_away + ' — Enviado!', 'success');
+      // Clear fields for next participant
+      var nEl = document.getElementById('pNome');
+      var eEl = document.getElementById('pEmail');
+      var sH  = document.getElementById('sH');
+      var sA  = document.getElementById('sA');
+      if (nEl) nEl.value = '';
+      if (eEl) eEl.value = '';
+      if (sH)  sH.value  = '';
+      if (sA)  sA.value  = '';
       setTimeout(renderVote, 600);
     } else {
       var errTxt = await r.text();
