@@ -458,6 +458,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 <div class="toast" id="toast"><span id="toastMsg">✅</span></div>
 
 <script>
+
 // ══════════════════════════════════════════
 // BACKGROUND ANIMATION
 // ══════════════════════════════════════════
@@ -566,897 +567,843 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
   }
   requestAnimationFrame(loop);
 })();
-
-// ══════════════════════════════════════════
-// SUPABASE
-// ══════════════════════════════════════════
-const SB_URL='https://xfoufsujlznedvebjeim.supabase.co';
-const SB_KEY_DEFAULT='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhmb3Vmc3VqbHpuZWR2ZWJqZWltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNTAyNTAsImV4cCI6MjA5NTgyNjI1MH0.9UH9TPluHgLjZHxzFr72O8h_ygt1kIixUiu8pfLHuhU';
-function getSbKey(){return localStorage.getItem('sbAnonKey')||SB_KEY_DEFAULT;}
-async function sbFetch(path,opts={}){
-  const key=getSbKey();
-  return fetch(SB_URL+path,{
-    ...opts,
-    headers:{'apikey':key,'Authorization':'Bearer '+key,
-      'Content-Type':'application/json','Prefer':opts.prefer||'',...(opts.headers||{})}
+// ════════════════════════════════════════════════════════════════
+// SUPABASE CONFIG
+// ════════════════════════════════════════════════════════════════
+const SB_URL = 'https://xfoufsujlznedvebjeim.supabase.co';
+const SB_KEY_DEFAULT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhmb3Vmc3VqbHpuZWR2ZWJqZWltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNTAyNTAsImV4cCI6MjA5NTgyNjI1MH0.9UH9TPluHgLjZHxzFr72O8h_ygt1kIixUiu8pfLHuhU';
+function getSbKey(){ return localStorage.getItem('sbAnonKey') || SB_KEY_DEFAULT; }
+async function sbFetch(path, opts) {
+  opts = opts || {};
+  var key = getSbKey();
+  return fetch(SB_URL + path, {
+    method: opts.method || 'GET',
+    body: opts.body || undefined,
+    signal: opts.signal || undefined,
+    headers: {
+      'apikey': key,
+      'Authorization': 'Bearer ' + key,
+      'Content-Type': 'application/json',
+      'Prefer': opts.prefer || ''
+    }
   });
 }
 
-// ══════════════════════════════════════════
-// STATE (local — email voter control only)
-// ══════════════════════════════════════════
-const ST={
-  get(){try{return JSON.parse(localStorage.getItem('bolaoSt')||'{}')}catch{return{}}},
-  set(o){localStorage.setItem('bolaoSt',JSON.stringify(Object.assign(this.get(),o)))}
+// ════════════════════════════════════════════════════════════════
+// STATE  (localStorage — email voter control per match)
+// ════════════════════════════════════════════════════════════════
+var ST = {
+  get: function() { try { return JSON.parse(localStorage.getItem('bolaoSt') || '{}'); } catch(e) { return {}; } },
+  set: function(o) { var s = this.get(); Object.assign(s, o); localStorage.setItem('bolaoSt', JSON.stringify(s)); }
 };
 
-// Cache of games loaded from tbjogos
-let JOGOS = []; // array of tbjogos rows
+// Game data from tbjogos
+var JOGOS = [];
 
-// ══════════════════════════════════════════
-// LOAD JOGOS FROM SUPABASE (tbjogos)
-// ══════════════════════════════════════════
-async function loadJogos(){
-  try{
-    const r=await sbFetch('/rest/v1/tbjogos?select=*&order=jogo_id.asc');
-    const text=await r.text();
-    if(!r.ok){
-      console.error('loadJogos HTTP',r.status,text);
-      if(r.status===401||r.status===403) toast('❌ Chave Supabase inválida ('+r.status+')','error');
-      else if(r.status===404||r.status===400) toast('⚠️ Tabela tbjogos não encontrada. Execute o SQL Setup.','error');
-      else toast('❌ Erro ao carregar jogos: HTTP '+r.status,'error');
+// ════════════════════════════════════════════════════════════════
+// LOAD JOGOS
+// ════════════════════════════════════════════════════════════════
+async function loadJogos() {
+  try {
+    var r = await sbFetch('/rest/v1/tbjogos?select=*&order=jogo_id.asc');
+    var txt = await r.text();
+    if (!r.ok) {
+      if (r.status === 401 || r.status === 403) toast('Chave Supabase invalida (' + r.status + ')', 'error');
+      else if (r.status === 404 || r.status === 400) toast('Tabela tbjogos nao encontrada. Execute o SQL Setup.', 'error');
+      else toast('Erro ao carregar jogos: ' + r.status, 'error');
+      JOGOS = [];
       return [];
     }
-    JOGOS=JSON.parse(text);
-    console.log('loadJogos OK:',JOGOS.length,'jogos');
+    JOGOS = JSON.parse(txt);
     return JOGOS;
-  }catch(e){
-    console.error('loadJogos error:',e);
-    toast('❌ Erro ao conectar ao Supabase: '+e.message,'error');
+  } catch(e) {
+    toast('Erro de conexao: ' + e.message, 'error');
+    JOGOS = [];
     return [];
   }
 }
 
-function getActiveJogo(){
-  return JOGOS.find(j=>j.status==='aberto') || null;
+function getActiveJogo() {
+  return JOGOS.find(function(j) { return j.status === 'aberto'; }) || null;
 }
 
-// ══════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════
 // HELPERS
-// ══════════════════════════════════════════
-const pad=n=>String(n).padStart(2,'0');
-function fmtDT(d){return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;}
-function deadlinePassed(j){return j.deadline_utc && Date.now()>=new Date(j.deadline_utc).getTime();}
-function isClosed(j){return j.status==='encerrado' || deadlinePassed(j);}
-function countdown(t){
-  const d=new Date(t)-Date.now(); if(d<=0)return null;
-  return `${pad(Math.floor(d/3600000))}:${pad(Math.floor(d%3600000/60000))}:${pad(Math.floor(d%60000/1000))}`;}
-function flagUrl(code){return `https://flagcdn.com/w80/${code}.png`;}
-function flagImg(code,emoji,name){
-  return `<img class="flag-img" src="${flagUrl(code)}" alt="${name}"
-    onerror="this.style.display='none';this.nextSibling.style.display='block'">
-  <span style="display:none;font-size:42px;line-height:1;">${emoji}</span>`;}
+// ════════════════════════════════════════════════════════════════
+function pad(n) { return String(n).padStart(2, '0'); }
+function fmtDT(d) {
+  return pad(d.getDate()) + '/' + pad(d.getMonth()+1) + '/' + d.getFullYear()
+    + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+}
+function deadlinePassed(j) { return j.deadline_utc && Date.now() >= new Date(j.deadline_utc).getTime(); }
+function isClosed(j) { return j.status === 'encerrado' || deadlinePassed(j); }
+function countdown(t) {
+  var d = new Date(t) - Date.now();
+  if (d <= 0) return null;
+  return pad(Math.floor(d/3600000)) + ':' + pad(Math.floor(d%3600000/60000)) + ':' + pad(Math.floor(d%60000/1000));
+}
+function flagUrl(code) { return 'https://flagcdn.com/w80/' + code + '.png'; }
 
-// ══════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════
 // CLOCK
-// ══════════════════════════════════════════
-function tickClock(){
-  const el=document.getElementById('dtBadge');
-  if(el){const n=new Date();
-    el.textContent=`📅 ${pad(n.getDate())}/${pad(n.getMonth()+1)} 🕐 ${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;}
+// ════════════════════════════════════════════════════════════════
+function tickClock() {
+  var el = document.getElementById('dtBadge');
+  if (!el) return;
+  var n = new Date();
+  el.textContent = pad(n.getDate()) + '/' + pad(n.getMonth()+1) + '/' + n.getFullYear()
+    + '  ' + pad(n.getHours()) + ':' + pad(n.getMinutes()) + ':' + pad(n.getSeconds());
 }
 
-// ══════════════════════════════════════════
-// RENDER VOTE (reads from JOGOS)
-// ══════════════════════════════════════════
-async function renderVote(){
-  if(!JOGOS.length) await loadJogos();
-  const area=document.getElementById('voteArea'), acts=document.getElementById('voteActions');
-  const j=getActiveJogo();
+// ════════════════════════════════════════════════════════════════
+// VOTE AREA
+// ════════════════════════════════════════════════════════════════
+async function renderVote() {
+  if (!JOGOS.length) await loadJogos();
+  var area = document.getElementById('voteArea');
+  var acts = document.getElementById('voteActions');
+  if (!area || !acts) return;
+  var j = getActiveJogo();
 
-  if(!j){
-    const msg = JOGOS.length===0
-      ? '<p>Não foi possível carregar os jogos.<br>Verifique a conexão com o Supabase na aba ⚙️ Config.</p>'
-      : '<p>Nenhum jogo aberto no momento.<br>Aguarde o administrador.</p>';
-    area.innerHTML=`<div class="banner wait"><h3>${JOGOS.length===0?'⚠️ Sem Conexão':'⏳ Aguardando Jogo'}</h3>${msg}</div>`;
-    acts.innerHTML=''; return;
-  }
-
-  if(isClosed(j)){
-    const why=deadlinePassed(j)?'O prazo de 1h antes do início foi atingido.':'O administrador encerrou as votações.';
-    area.innerHTML=`<div class="banner closed"><h3>🔒 Palpite Encerrado</h3>
-      <p>${why}</p><div class="big-msg">✦ PALPITE ENCERRADO ✦</div></div>`;
-    acts.innerHTML=''; return;
-  }
-
-  const email=(document.getElementById('pEmail')?.value||'').trim().toLowerCase();
-  const s=ST.get(), voters=(s.voters||{})[j.jogo_id]||[];
-  if(email && voters.includes(email)){
-    area.innerHTML=`<div class="banner voted"><h3>✅ Voto Registrado!</h3>
-      <p>Palpite para <strong>${j.nome_home} × ${j.nome_away}</strong> já enviado!<br>Obrigado! 🇧🇷</p></div>`;
-    acts.innerHTML=''; return;
-  }
-
-  const hBr=j.nome_home==='Brasil'?' br':'', aBr=j.nome_away==='Brasil'?' br':'';
-  const cd=countdown(j.deadline_utc);
-  const urgent=cd&&(new Date(j.deadline_utc)-Date.now())<600000;
-  area.innerHTML=`
-  <div class="match-big">
-    <div class="m-meta">
-      <span class="m-tag">Jogo ${j.jogo_id} · Grupo C · 🇧🇷 Brasil</span>
-      <div style="text-align:right;">
-        <span class="m-date-badge">📅 ${j.data_label}</span>
-        <div class="m-city">📍 ${j.cidade}</div>
-      </div>
-    </div>
-    <div class="cd-bar">
-      <span class="cd-lbl">⏱ Prazo para votar</span>
-      <span class="cd-val${urgent?' urgent':''}" id="cdVal">${cd||'—'}</span>
-    </div>
-    <div class="teams-row">
-      <div class="team">${flagImg(j.flag_code_home,j.flag_home,j.nome_home)}<div class="tname${hBr}">${j.nome_home}</div></div>
-      <div class="vs">VS</div>
-      <div class="team">${flagImg(j.flag_code_away,j.flag_away,j.nome_away)}<div class="tname${aBr}">${j.nome_away}</div></div>
-    </div>
-    <div class="score-row">
-      <input class="si" type="number" id="sH" min="0" max="20" placeholder="?">
-      <span class="sdash">×</span>
-      <input class="si" type="number" id="sA" min="0" max="20" placeholder="?">
-    </div>
-  </div>`;
-  acts.innerHTML=`
-    <button class="btn btn-outline" onclick="clearScore()">🗑 Limpar</button>
-    <button class="btn btn-gold" onclick="submitVote()">📤 Enviar Palpite</button>`;
-}
-function clearScore(){const h=document.getElementById('sH'),a=document.getElementById('sA');if(h)h.value='';if(a)a.value='';}
-
-// ══════════════════════════════════════════
-// SUBMIT VOTE
-// ══════════════════════════════════════════
-async function submitVote(){
-  const nome=document.getElementById('pNome').value.trim();
-  const email=document.getElementById('pEmail').value.trim().toLowerCase();
-  if(!nome){toast('⚠️ Informe seu nome!','error');return;}
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast('⚠️ E-mail inválido!','error');return;}
-  const j=getActiveJogo();
-  if(!j){toast('⏳ Nenhum jogo aberto.','error');return;}
-  if(isClosed(j)){toast('🔒 Palpite encerrado!','error');await renderVote();return;}
-  const s=ST.get(), voters=s.voters||{};
-  if((voters[j.jogo_id]||[]).includes(email)){toast('⚠️ E-mail já votou!','error');await renderVote();return;}
-  const h=document.getElementById('sH')?.value, a=document.getElementById('sA')?.value;
-  if(h===''||h==null||a===''||a==null){toast('⚠️ Informe o placar!','error');return;}
-  try{
-    toast('⏳ Enviando…','');
-    const jogoNome=j.nome_home+' x '+j.nome_away;
-    const dup=await sbFetch(`/rest/v1/tbpalpites?select=id&email=eq.${encodeURIComponent(email)}&jogo_id=eq.${encodeURIComponent(j.jogo_id)}&limit=1`);
-    const dupData=await dup.json();
-    if(Array.isArray(dupData)&&dupData.length>0){
-      if(!voters[j.jogo_id])voters[j.jogo_id]=[];
-      voters[j.jogo_id].push(email); ST.set({voters});
-      toast('⚠️ E-mail já registrado!','error'); await renderVote(); return;
-    }
-    const payload={jogo_id:j.jogo_id,jogo:jogoNome,nome,email,
-      data_voto:fmtDT(new Date()),placar_casa:parseInt(h),placar_fora:parseInt(a),pontuacao:0};
-    console.log('Enviando palpite payload:',JSON.stringify(payload));
-    const r=await sbFetch('/rest/v1/tbpalpites',{method:'POST',prefer:'return=minimal',
-      body:JSON.stringify(payload)});
-    if(r.status===201){
-      if(!voters[j.jogo_id])voters[j.jogo_id]=[];
-      voters[j.jogo_id].push(email); ST.set({voters});
-      toast(`✅ ${j.nome_home} ${h}×${a} ${j.nome_away} — Enviado!`,'success');
-      setTimeout(renderVote,500);
-    } else {
-      const errText=await r.text();
-      let errMsg=errText;
-      try{const ej=JSON.parse(errText);errMsg=ej.message||ej.hint||ej.details||errText;}catch(e2){}
-      console.error('submitVote error HTTP '+r.status+':',errMsg);
-      if(r.status===400){
-        if(errMsg.toLowerCase().includes('column')||errMsg.toLowerCase().includes('exist'))
-          toast('❌ Coluna ausente na tabela. Acesse Config → Diagnosticar Tabelas.','error');
-        else
-          toast('❌ Erro 400: '+errMsg.slice(0,100),'error');
-      } else if(r.status===403){
-        toast('❌ Sem permissão (403). Verifique políticas RLS da tbpalpites.','error');
-      } else {
-        toast('❌ Erro '+r.status+': '+errMsg.slice(0,80),'error');
-      }
-    }
-  }catch(e){
-    console.error('submitVote exception:',e);
-    toast('❌ Erro de conexão: '+e.message,'error');
-  }
-}
-
-// ══════════════════════════════════════════
-// RANKING
-// ══════════════════════════════════════════
-async function loadRanking(){
-  document.getElementById('rkContainer').innerHTML=`<div class="rk-empty" style="padding:30px;">⏳ Carregando…</div>`;
-  if(!JOGOS.length) await loadJogos();
-  const active=getActiveJogo();
-  try{
-    let url='/rest/v1/tbpalpites?select=*&order=pontuacao.desc';
-    if(active) url+=`&jogo_id=eq.${encodeURIComponent(active.jogo_id)}`;
-    const r=await sbFetch(url);
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    buildRanking(await r.json(), active);
-  }catch(e){
-    document.getElementById('rkContainer').innerHTML=`<div class="rk-empty">⚠️ Erro: ${e.message}</div>`;
-  }
-}
-function buildRanking(rows, activeJogo){
-  if(!rows||!rows.length){
-    document.getElementById('rkContainer').innerHTML=`<div class="rk-empty">📋 Sem palpites ainda.</div>`;return;}
-  const byEmail={};
-  rows.forEach(row=>{
-    const em=row.email.toLowerCase();
-    if(!byEmail[em])byEmail[em]={nome:row.nome,email:em,when:row.data_voto,placar:'—',pts:0};
-    byEmail[em].placar=`${row.placar_casa}×${row.placar_fora}`;
-    byEmail[em].pts=row.pontuacao||0;
-    byEmail[em].when=row.data_voto;
-  });
-  const ranked=Object.values(byEmail).sort((a,b)=>b.pts-a.pts);
-  const medals=['🥇','🥈','🥉'],cls=['g','s','b'];
-  const matchLabel=activeJogo?`${activeJogo.nome_home} × ${activeJogo.nome_away}`:'Todos os jogos';
-  let html=`<div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:3px;color:var(--gold);text-transform:uppercase;margin-bottom:6px;">⚽ ${matchLabel}</div>`;
-  html+=`<div class="rk-table"><table><thead><tr>
-    <th>#</th><th>Participante</th><th>Placar</th><th style="text-align:center;">⭐</th><th>Voto</th>
-  </tr></thead><tbody>`;
-  ranked.forEach((p,i)=>{
-    html+=`<tr>
-      <td><span class="rk-pos ${cls[i]||''}">${medals[i]||(i+1)+'º'}</span></td>
-      <td class="rk-name">${p.nome}</td>
-      <td style="text-align:center;"><span class="rk-score">${p.placar}</span></td>
-      <td><span class="pts-badge">${p.pts}</span></td>
-      <td class="rk-muted">${p.when||'—'}</td></tr>`;
-  });
-  html+=`</tbody></table></div>
-  <p style="color:var(--muted);font-size:11px;text-align:center;margin-top:8px;">
-    10=exato · 6=saldo · 3=vencedor · 1=empate</p>`;
-  document.getElementById('rkContainer').innerHTML=html;
-}
-
-// ══════════════════════════════════════════
-// ADMIN: RENDER JOGO CARDS (from tbjogos)
-// ══════════════════════════════════════════
-async function renderAdminJogos(){
-  const grid=document.getElementById('jgGrid');
-  if(!grid)return;
-  grid.innerHTML='<div class="rk-empty" style="padding:16px;">⏳ Carregando jogos...</div>';
-  await loadJogos();
-  if(!JOGOS.length){
-    grid.innerHTML='<div class="rk-empty" style="padding:16px;">Nenhum jogo na tabela tbjogos.<br><small>Execute o SQL Setup primeiro.</small></div>';
+  if (!j) {
+    area.innerHTML = '<div class="banner wait"><h3>Aguardando Jogo</h3>'
+      + '<p>Nenhum jogo aberto. Aguarde o administrador.</p></div>';
+    acts.innerHTML = '';
     return;
   }
-  const s=ST.get();
-  const rows=JOGOS.map(function(j){
-    const jid=j.jogo_id;
-    const stClass=j.status==='aberto'?'st-aberto':j.status==='encerrado'?'st-encerrado':'st-inativo';
-    const stLabel=j.status==='aberto'?'Aberto':j.status==='encerrado'?'Encerrado':'Inativo';
-    const autoClose=deadlinePassed(j);
-    const cd=j.status==='aberto'&&!autoClose?countdown(j.deadline_utc):null;
-    const urgent=cd&&(new Date(j.deadline_utc)-Date.now())<600000;
-    const voters=((s.voters||{})[jid]||[]).length;
-    const hasResult=j.placar_home!=null&&j.placar_away!=null;
-    const ph=j.placar_home!=null?j.placar_home:'';
-    const pa=j.placar_away!=null?j.placar_away:'';
-    const php=j.placar_home!=null?j.placar_home:'?';
-    const pap=j.placar_away!=null?j.placar_away:'?';
-    const cdHtml=cd?('<div class="jg-cd'+(urgent?' urgent':'')+'" id="jg-cd-'+jid+'">'+cd+'</div>'):'';
-    const resHtml=hasResult?('<div class="jg-result">Placar: '+j.placar_home+' x '+j.placar_away+(j.pontuacao_calculada?' OK':'')+'</div>'):'';
-    const btnAbrir=j.status!=='aberto'?('<button class="btn btn-green" data-action="open" data-jid="'+jid+'">Abrir</button>'):'';
-    const btnEnc=j.status==='aberto'?('<button class="btn btn-red" data-action="close" data-jid="'+jid+'">Encerrar</button>'):'';
-    const btnInat=(j.status!=='inativo'&&j.status!=='aberto')?('<button class="btn btn-gray" data-action="inactive" data-jid="'+jid+'" style="cursor:pointer">Inativar</button>'):'';
-    return '<div class="jg-card '+stClass+'" data-jid="'+jid+'">'
-      +'<div class="jg-flags">'+j.flag_home+' '+j.flag_away+'</div>'
-      +'<div class="jg-name" style="display:flex;align-items:center;justify-content:space-between;">'+j.nome_home+' x '+j.nome_away+btnEdit+'</div>'
-      +'<div class="jg-date">'+j.data_label+'</div>'
-      +'<div class="jg-status">'+stLabel+(autoClose?' (auto)':'')+'</div>'
-      +'<div class="jg-votes">Votos locais: '+voters+'</div>'
-      +cdHtml+resHtml
-      +'<div class="jg-btns" style="margin-bottom:6px;">'+btnAbrir+btnEnc+btnInat+'</div>'
-      +'<div class="jg-sep">'
-        +'<div class="jg-sep-label">Placar Final</div>'
-        +'<div class="score-mini">'
-          +'<input class="smi" type="number" id="ph-'+jid+'" min="0" max="20" placeholder="'+php+'" value="'+ph+'">'
-          +'<span class="smi-dash">x</span>'
-          +'<input class="smi" type="number" id="pa-'+jid+'" min="0" max="20" placeholder="'+pap+'" value="'+pa+'">'
-        +'</div>'
-        +'<div class="jg-btns">'
-          +'<button class="btn btn-blue" data-action="saveplacar" data-jid="'+jid+'">Salvar Placar</button>'
-          +'<button class="btn btn-blue" data-action="calcpts" data-jid="'+jid+'" style="background:linear-gradient(135deg,#7b2ff7,#5a1eb0);">Calcular Pontos</button>'
-          +'<button class="btn btn-gray" data-action="zeroplacar" data-jid="'+jid+'" style="cursor:pointer">Zerar Placar</button>'
-        +'</div>'
-      +'</div>'
-      +'<div class="jg-sep">'
-        +'<div class="jg-sep-label">Editar / Resetar</div>'
-        +'<div class="jg-btns" style="margin-bottom:5px;">'
-          +'<button class="btn btn-outline" data-action="editjogo" data-jid="'+jid+'">✏️ Editar</button>'
-        +'</div>'
-        +'<div class="jg-btns">'
-          +'<button class="btn" data-action="resetvotos" data-jid="'+jid+'" style="background:rgba(239,35,60,.1);color:var(--red);border:1px solid rgba(239,35,60,.3);">Votos locais</button>'
-          +'<button class="btn" data-action="deletepalpites" data-jid="'+jid+'" style="background:rgba(239,35,60,.1);color:var(--red);border:1px solid rgba(239,35,60,.3);">Apagar palpites (DB)</button>'
-        +'</div>'
-      +'</div>'
-    +'</div>';
+
+  if (isClosed(j)) {
+    area.innerHTML = '<div class="banner closed"><h3>Palpite Encerrado</h3>'
+      + '<p>' + (j.status === 'encerrado' ? 'O administrador encerrou.' : 'Prazo de 1h atingido.') + '</p>'
+      + '<div class="big-msg">PALPITE ENCERRADO</div></div>';
+    acts.innerHTML = '';
+    return;
+  }
+
+  var email = (document.getElementById('pEmail') ? document.getElementById('pEmail').value : '').trim().toLowerCase();
+  var voters = (ST.get().voters || {});
+  if (email && (voters[j.jogo_id] || []).includes(email)) {
+    area.innerHTML = '<div class="banner voted"><h3>Voto Registrado!</h3>'
+      + '<p>Palpite para <strong>' + j.nome_home + ' x ' + j.nome_away + '</strong> ja enviado. Obrigado!</p></div>';
+    acts.innerHTML = '';
+    return;
+  }
+
+  var cd = countdown(j.deadline_utc);
+  var urgent = cd && (new Date(j.deadline_utc) - Date.now()) < 600000;
+  var hBr = j.nome_home === 'Brasil' ? ' br' : '';
+  var aBr = j.nome_away === 'Brasil' ? ' br' : '';
+  var fhSrc = j.flag_code_home ? flagUrl(j.flag_code_home) : '';
+  var faSrc = j.flag_code_away ? flagUrl(j.flag_code_away) : '';
+
+  area.innerHTML = '<div class="match-big">'
+    + '<div class="m-meta">'
+    + '<span class="m-tag">Jogo ' + j.jogo_id + (j.fase ? ' · ' + j.fase : '') + '</span>'
+    + '<div style="text-align:right;">'
+    + '<span class="m-date-badge">' + (j.data_label || '') + '</span>'
+    + '<div class="m-city">' + (j.cidade || '') + '</div>'
+    + '</div></div>'
+    + (cd ? '<div class="cd-bar"><span class="cd-lbl">Prazo</span>'
+      + '<span id="cdVal" class="cd-val' + (urgent ? ' urgent' : '') + '">' + cd + '</span></div>' : '')
+    + '<div class="teams-row">'
+    + '<div class="team">'
+    + (fhSrc ? '<img class="flag-img" src="' + fhSrc + '" alt="' + j.nome_home + '">' : '<span style="font-size:40px;">' + (j.flag_home || '') + '</span>')
+    + '<div class="tname' + hBr + '">' + j.nome_home + '</div></div>'
+    + '<div class="vs">VS</div>'
+    + '<div class="team">'
+    + (faSrc ? '<img class="flag-img" src="' + faSrc + '" alt="' + j.nome_away + '">' : '<span style="font-size:40px;">' + (j.flag_away || '') + '</span>')
+    + '<div class="tname' + aBr + '">' + j.nome_away + '</div></div>'
+    + '</div>'
+    + '<div class="score-row">'
+    + '<input class="si" type="number" id="sH" min="0" max="20" placeholder="?">'
+    + '<span class="sdash">x</span>'
+    + '<input class="si" type="number" id="sA" min="0" max="20" placeholder="?">'
+    + '</div></div>';
+
+  acts.innerHTML = '<button class="btn btn-outline" id="btnClear">Limpar</button>'
+    + '<button class="btn btn-gold" id="btnSubmit">Enviar Palpite</button>';
+
+  document.getElementById('btnClear').onclick = clearScore;
+  document.getElementById('btnSubmit').onclick = submitVote;
+}
+
+function clearScore() {
+  var h = document.getElementById('sH'); var a = document.getElementById('sA');
+  if (h) h.value = ''; if (a) a.value = '';
+}
+
+// ════════════════════════════════════════════════════════════════
+// SUBMIT VOTE
+// ════════════════════════════════════════════════════════════════
+async function submitVote() {
+  var nome = document.getElementById('pNome').value.trim();
+  var email = document.getElementById('pEmail').value.trim().toLowerCase();
+  if (!nome) { toast('Informe seu nome!', 'error'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('E-mail invalido!', 'error'); return; }
+  var j = getActiveJogo();
+  if (!j) { toast('Nenhum jogo aberto.', 'error'); return; }
+  if (isClosed(j)) { toast('Palpite encerrado!', 'error'); await renderVote(); return; }
+  var s = ST.get(); var voters = s.voters || {};
+  if ((voters[j.jogo_id] || []).includes(email)) { toast('E-mail ja votou!', 'error'); await renderVote(); return; }
+  var h = document.getElementById('sH') ? document.getElementById('sH').value : '';
+  var a = document.getElementById('sA') ? document.getElementById('sA').value : '';
+  if (h === '' || a === '') { toast('Informe o placar!', 'error'); return; }
+
+  try {
+    toast('Enviando...', '');
+    // Check duplicate in DB
+    var dupR = await sbFetch('/rest/v1/tbpalpites?select=id&email=eq.' + encodeURIComponent(email) + '&jogo_id=eq.' + encodeURIComponent(j.jogo_id) + '&limit=1');
+    var dupData = await dupR.json();
+    if (Array.isArray(dupData) && dupData.length > 0) {
+      if (!voters[j.jogo_id]) voters[j.jogo_id] = [];
+      voters[j.jogo_id].push(email); ST.set({voters: voters});
+      toast('E-mail ja registrado neste jogo!', 'error'); await renderVote(); return;
+    }
+    var payload = {
+      jogo_id: j.jogo_id,
+      jogo: j.nome_home + ' x ' + j.nome_away,
+      nome: nome, email: email,
+      data_voto: fmtDT(new Date()),
+      placar_casa: parseInt(h),
+      placar_fora: parseInt(a),
+      pontuacao: 0
+    };
+    var r = await sbFetch('/rest/v1/tbpalpites', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify(payload) });
+    if (r.status === 201) {
+      if (!voters[j.jogo_id]) voters[j.jogo_id] = [];
+      voters[j.jogo_id].push(email); ST.set({voters: voters});
+      toast(j.nome_home + ' ' + h + 'x' + a + ' ' + j.nome_away + ' — Enviado!', 'success');
+      setTimeout(renderVote, 600);
+    } else {
+      var errTxt = await r.text();
+      var errMsg = errTxt;
+      try { var ej = JSON.parse(errTxt); errMsg = ej.message || ej.hint || ej.details || errTxt; } catch(e2) {}
+      console.error('submitVote error', r.status, errMsg);
+      if (r.status === 400) {
+        if (errMsg.toLowerCase().indexOf('column') >= 0 || errMsg.toLowerCase().indexOf('exist') >= 0)
+          toast('Coluna ausente na tabela. Acesse Config e diagnostique.', 'error');
+        else
+          toast('Erro 400: ' + errMsg.slice(0, 80), 'error');
+      } else {
+        toast('Erro ' + r.status + ': ' + errMsg.slice(0, 60), 'error');
+      }
+    }
+  } catch(e) {
+    console.error('submitVote exception:', e);
+    toast('Erro de conexao: ' + e.message, 'error');
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// RANKING
+// ════════════════════════════════════════════════════════════════
+async function loadRanking() {
+  var rkEl = document.getElementById('rkContainer');
+  if (!rkEl) return;
+  rkEl.innerHTML = '<div class="rk-empty" style="padding:30px;">Carregando...</div>';
+  var s = ST.get();
+  var active = getActiveJogo();
+  try {
+    var url = '/rest/v1/tbpalpites?select=*&order=pontuacao.desc';
+    if (active) url += '&jogo_id=eq.' + encodeURIComponent(active.jogo_id);
+    var r = await sbFetch(url);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    buildRanking(await r.json(), active);
+  } catch(e) {
+    rkEl.innerHTML = '<div class="rk-empty">Erro: ' + e.message + '</div>';
+  }
+}
+
+function buildRanking(rows, activeJogo) {
+  var rkEl = document.getElementById('rkContainer');
+  if (!rows || !rows.length) {
+    rkEl.innerHTML = '<div class="rk-empty">Sem palpites ainda.</div>';
+    return;
+  }
+  var byEmail = {};
+  rows.forEach(function(row) {
+    var em = row.email.toLowerCase();
+    if (!byEmail[em]) byEmail[em] = { nome: row.nome, email: em, when: row.data_voto, jogos: {}, total: 0 };
+    byEmail[em].jogos[row.jogo] = { placar: row.placar_casa + 'x' + row.placar_fora, pts: row.pontuacao || 0 };
+    byEmail[em].total += row.pontuacao || 0;
+    byEmail[em].when = row.data_voto;
   });
-  grid.innerHTML='<div class="jg-grid">'+rows.join('')+'</div>';
-  grid.onclick=async function(e){
-    var btn=e.target.closest('[data-action]');
-    if(!btn)return;
-    var action=btn.dataset.action;
-    var jid=btn.dataset.jid;
-    var jogo=JOGOS.find(function(x){return x.jogo_id===jid;});
-    if(!jogo)return;
-    if(action==='edit')           openJogoForm(JOGOS.find(x=>x.jogo_id===jid));
-    else if(action==='open')     await jogoSetStatus(jid,'aberto');
-    else if(action==='close')    await jogoSetStatus(jid,'encerrado');
-    else if(action==='inactive') await jogoSetStatus(jid,'inativo');
-    else if(action==='saveplacar')    await jogoSavePlacar(jid);
-    else if(action==='calcpts')       await jogoCalcPontuacao(jid,jogo.nome_home+' x '+jogo.nome_away);
-    else if(action==='zeroplacar')    await jogoZerarPlacar(jid);
-    else if(action==='resetvotos')    jogoResetVotos(jid);
-    else if(action==='deletepalpites') await jogoDeletePalpites(jid,jogo.nome_home+' x '+jogo.nome_away);
-    else if(action==='editjogo')      openJogoForm(jogo);
+  var jogoNames = [];
+  rows.forEach(function(r) { if (r.jogo && jogoNames.indexOf(r.jogo) < 0) jogoNames.push(r.jogo); });
+  var ranked = Object.values(byEmail).sort(function(a,b) { return b.total - a.total; });
+  var medals = ['1', '2', '3'];
+  var matchLabel = activeJogo ? (activeJogo.nome_home + ' x ' + activeJogo.nome_away) : 'Todos';
+
+  var html = '<div style="font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:3px;margin-bottom:6px;">Jogo: ' + matchLabel + '</div>';
+  html += '<div class="rk-table"><table><thead><tr><th>#</th><th>Nome</th><th>Placar</th><th>Pts</th><th>Voto</th></tr></thead><tbody>';
+
+  ranked.forEach(function(p, i) {
+    var jogoKey = activeJogo ? (activeJogo.nome_home + ' x ' + activeJogo.nome_away) : jogoNames[0];
+    var v = p.jogos[jogoKey];
+    var pos = i === 0 ? '1' : i === 1 ? '2' : i === 2 ? '3' : (i+1) + '';
+    var posClass = i < 3 ? ['g','s','b'][i] : '';
+    html += '<tr>'
+      + '<td><span class="rk-pos ' + posClass + '">' + pos + '</span></td>'
+      + '<td class="rk-name">' + p.nome + '</td>'
+      + '<td style="text-align:center;">' + (v ? '<span class="rk-score">' + v.placar + '</span>' : '-') + '</td>'
+      + '<td><span class="pts-badge">' + p.total + '</span></td>'
+      + '<td class="rk-muted">' + (p.when || '-') + '</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table></div>';
+  rkEl.innerHTML = html;
+}
+
+// ════════════════════════════════════════════════════════════════
+// CONFIG — ADMIN JOGO GRID
+// ════════════════════════════════════════════════════════════════
+async function renderAdminJogos() {
+  var grid = document.getElementById('jgGrid');
+  if (!grid) return;
+  grid.innerHTML = '<div class="rk-empty" style="padding:16px;">Carregando jogos...</div>';
+  await loadJogos();
+  if (!JOGOS.length) {
+    grid.innerHTML = '<div class="rk-empty" style="padding:16px;">Nenhum jogo na tabela tbjogos.<br>Execute o SQL Setup primeiro.</div>';
+    return;
+  }
+  var s = ST.get();
+  var rows = JOGOS.map(function(j) {
+    var jid = j.jogo_id;
+    var stClass = j.status === 'aberto' ? 'st-aberto' : j.status === 'encerrado' ? 'st-encerrado' : 'st-inativo';
+    var stLabel = j.status === 'aberto' ? 'Aberto' : j.status === 'encerrado' ? 'Encerrado' : 'Inativo';
+    var autoCl = deadlinePassed(j);
+    var cd = (j.status === 'aberto' && !autoCl) ? countdown(j.deadline_utc) : null;
+    var urgent = cd && (new Date(j.deadline_utc) - Date.now()) < 600000;
+    var voters = ((s.voters || {})[jid] || []).length;
+    var hasPlacar = j.placar_home != null && j.placar_away != null;
+    var ph = j.placar_home != null ? j.placar_home : '';
+    var pa = j.placar_away != null ? j.placar_away : '';
+
+    var btnAbrir = j.status !== 'aberto' ? '<button class="btn btn-green" data-action="open" data-jid="' + jid + '">Abrir</button>' : '';
+    var btnEnc = j.status === 'aberto' ? '<button class="btn btn-red" data-action="close" data-jid="' + jid + '">Encerrar</button>' : '';
+    var btnInat = (j.status !== 'inativo' && j.status !== 'aberto') ? '<button class="btn btn-gray" data-action="inactive" data-jid="' + jid + '" style="cursor:pointer;">Inativar</button>' : '';
+    var btnEdit = '<button class="btn btn-outline" data-action="edit" data-jid="' + jid + '" style="padding:4px 10px;font-size:10px;">Editar</button>';
+    var cdHtml = cd ? '<div class="jg-cd' + (urgent ? ' urgent' : '') + '" id="jg-cd-' + jid + '">' + cd + '</div>' : '';
+    var resHtml = hasPlacar ? '<div class="jg-result">Placar: ' + j.placar_home + ' x ' + j.placar_away + (j.pontuacao_calculada ? ' OK' : '') + '</div>' : '';
+
+    return '<div class="jg-card ' + stClass + '" data-jid="' + jid + '">'
+      + '<div class="jg-flags">' + (j.flag_home || '') + ' ' + (j.flag_away || '') + '</div>'
+      + '<div class="jg-name" style="display:flex;align-items:center;justify-content:space-between;">'
+      + j.nome_home + ' x ' + j.nome_away + btnEdit + '</div>'
+      + '<div class="jg-date">' + (j.data_label || '') + '</div>'
+      + '<div class="jg-status">' + stLabel + (autoCl ? ' (auto)' : '') + '</div>'
+      + '<div class="jg-votes">Votos locais: ' + voters + '</div>'
+      + cdHtml + resHtml
+      + '<div class="jg-btns" style="margin-bottom:6px;">' + btnAbrir + btnEnc + btnInat + '</div>'
+      + '<div class="jg-sep">'
+      + '<div class="jg-sep-label">Placar Final</div>'
+      + '<div class="score-mini">'
+      + '<input class="smi" type="number" id="ph-' + jid + '" min="0" max="20" value="' + ph + '" placeholder="?">'
+      + '<span class="smi-dash">x</span>'
+      + '<input class="smi" type="number" id="pa-' + jid + '" min="0" max="20" value="' + pa + '" placeholder="?">'
+      + '</div>'
+      + '<div class="jg-btns">'
+      + '<button class="btn btn-blue" data-action="saveplacar" data-jid="' + jid + '">Salvar Placar</button>'
+      + '<button class="btn btn-blue" data-action="calcpts" data-jid="' + jid + '" style="background:linear-gradient(135deg,#7b2ff7,#5a1eb0);">Calcular Pts</button>'
+      + '<button class="btn btn-gray" data-action="zeroplacar" data-jid="' + jid + '" style="cursor:pointer;">Zerar</button>'
+      + '</div></div>'
+      + '<div class="jg-sep">'
+      + '<div class="jg-sep-label">Resetar</div>'
+      + '<div class="jg-btns">'
+      + '<button class="btn" data-action="resetvotos" data-jid="' + jid + '" style="background:rgba(239,35,60,.1);color:var(--red);border:1px solid rgba(239,35,60,.3);">Votos locais</button>'
+      + '<button class="btn" data-action="deletepalpites" data-jid="' + jid + '" style="background:rgba(239,35,60,.1);color:var(--red);border:1px solid rgba(239,35,60,.3);">Apagar palpites DB</button>'
+      + '</div></div>'
+      + '</div>';
+  });
+
+  grid.innerHTML = '<div class="jg-grid">' + rows.join('') + '</div>';
+
+  grid.onclick = async function(e) {
+    var btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    var action = btn.dataset.action;
+    var jid = btn.dataset.jid;
+    var jogo = JOGOS.find(function(x) { return x.jogo_id === jid; });
+    if (!jogo) return;
+    if (action === 'edit')          openJogoForm(jogo);
+    else if (action === 'open')     await jogoSetStatus(jid, 'aberto');
+    else if (action === 'close')    await jogoSetStatus(jid, 'encerrado');
+    else if (action === 'inactive') await jogoSetStatus(jid, 'inativo');
+    else if (action === 'saveplacar')    await jogoSavePlacar(jid);
+    else if (action === 'calcpts')       await jogoCalcPts(jid, jogo.nome_home + ' x ' + jogo.nome_away);
+    else if (action === 'zeroplacar')    await jogoZerarPlacar(jid);
+    else if (action === 'resetvotos')    jogoResetVotos(jid);
+    else if (action === 'deletepalpites') await jogoDeletePalpites(jid, jogo.nome_home + ' x ' + jogo.nome_away);
   };
 }
-// ══════════════════════════════════════════
-// ADMIN JOGO ACTIONS
-// ══════════════════════════════════════════
-async function jogoSetStatus(jogoId, status){
-  // Close all others if opening this one
-  if(status==='aberto'){
-    for(const j of JOGOS){
-      if(j.jogo_id!==jogoId && j.status==='aberto'){
-        await sbFetch(`/rest/v1/tbjogos?jogo_id=eq.${j.jogo_id}`,
-          {method:'PATCH',body:JSON.stringify({status:'inativo'})});
+
+// ════════════════════════════════════════════════════════════════
+// JOGO ACTIONS
+// ════════════════════════════════════════════════════════════════
+async function jogoSetStatus(jogoId, status) {
+  if (status === 'aberto') {
+    for (var i = 0; i < JOGOS.length; i++) {
+      if (JOGOS[i].jogo_id !== jogoId && JOGOS[i].status === 'aberto') {
+        await sbFetch('/rest/v1/tbjogos?jogo_id=eq.' + JOGOS[i].jogo_id, { method: 'PATCH', body: JSON.stringify({ status: 'inativo' }) });
       }
     }
   }
-  const r=await sbFetch(`/rest/v1/tbjogos?jogo_id=eq.${jogoId}`,
-    {method:'PATCH',body:JSON.stringify({status})});
-  if(r.ok||r.status===204){
-    toast(`✅ Jogo ${jogoId} → ${status}!`,'success');
+  var r = await sbFetch('/rest/v1/tbjogos?jogo_id=eq.' + jogoId, { method: 'PATCH', body: JSON.stringify({ status: status }) });
+  if (r.ok || r.status === 204) {
+    toast('Jogo ' + jogoId + ' agora: ' + status, 'success');
     await renderAdminJogos(); await renderVote();
-  } else toast('❌ Erro ao atualizar status.','error');
+  } else toast('Erro ao atualizar status.', 'error');
 }
 
-async function jogoSavePlacar(jogoId){
-  const h=document.getElementById(`ph-${jogoId}`)?.value;
-  const a=document.getElementById(`pa-${jogoId}`)?.value;
-  if(h===''||a===''){toast('⚠️ Informe o placar!','error');return;}
-  const r=await sbFetch(`/rest/v1/tbjogos?jogo_id=eq.${jogoId}`,
-    {method:'PATCH',body:JSON.stringify({placar_home:parseInt(h),placar_away:parseInt(a),pontuacao_calculada:false})});
-  if(r.ok||r.status===204){
-    toast(`💾 Placar ${h}×${a} salvo!`,'success');
-    await renderAdminJogos();
-  } else toast('❌ Erro ao salvar placar.','error');
+async function jogoSavePlacar(jogoId) {
+  var h = document.getElementById('ph-' + jogoId);
+  var a = document.getElementById('pa-' + jogoId);
+  if (!h || !a || h.value === '' || a.value === '') { toast('Informe o placar!', 'error'); return; }
+  var r = await sbFetch('/rest/v1/tbjogos?jogo_id=eq.' + jogoId, {
+    method: 'PATCH',
+    body: JSON.stringify({ placar_home: parseInt(h.value), placar_away: parseInt(a.value), pontuacao_calculada: false })
+  });
+  if (r.ok || r.status === 204) { toast('Placar ' + h.value + 'x' + a.value + ' salvo!', 'success'); await renderAdminJogos(); }
+  else toast('Erro ao salvar placar.', 'error');
 }
 
-async function jogoZerarPlacar(jogoId){
-  if(!confirm('Zerar o placar final deste jogo?')) return;
-  const r=await sbFetch(`/rest/v1/tbjogos?jogo_id=eq.${jogoId}`,
-    {method:'PATCH',body:JSON.stringify({placar_home:null,placar_away:null,pontuacao_calculada:false})});
-  if(r.ok||r.status===204){toast('🔄 Placar zerado.','success');await renderAdminJogos();}
-  else toast('❌ Erro.','error');
+async function jogoZerarPlacar(jogoId) {
+  if (!confirm('Zerar o placar final deste jogo?')) return;
+  var r = await sbFetch('/rest/v1/tbjogos?jogo_id=eq.' + jogoId, {
+    method: 'PATCH', body: JSON.stringify({ placar_home: null, placar_away: null, pontuacao_calculada: false })
+  });
+  if (r.ok || r.status === 204) { toast('Placar zerado.', 'success'); await renderAdminJogos(); }
+  else toast('Erro ao zerar.', 'error');
 }
 
-function calcPts(pC,pF,rC,rF){
-  if(pC===rC&&pF===rF)return 10;
-  if((pC-pF)===(rC-rF))return 6;
-  if(rC!==rF&&(pC>pF)===(rC>rF))return 3;
-  if(pC===pF&&rC===rF)return 1;
+function calcPts(pC, pF, rC, rF) {
+  if (pC === rC && pF === rF) return 10;
+  if ((pC - pF) === (rC - rF)) return 6;
+  if (rC !== rF && (pC > pF) === (rC > rF)) return 3;
+  if (pC === pF && rC === rF) return 1;
   return 0;
 }
 
-async function jogoCalcPontuacao(jogoId, jogoNome){
-  const jogo=JOGOS.find(j=>j.jogo_id===jogoId);
-  if(jogo?.placar_home==null||jogo?.placar_away==null){
-    toast('⚠️ Salve o placar final primeiro!','error');return;}
-  toast('⏳ Calculando pontuação…','');
-  try{
-    const r=await sbFetch(`/rest/v1/tbpalpites?select=id,placar_casa,placar_fora&jogo_id=eq.${encodeURIComponent(jogoId)}`);
-    const votes=await r.json();
-    if(!Array.isArray(votes)) throw new Error('Dados inválidos');
-    let updated=0;
-    for(const v of votes){
-      const pts=calcPts(v.placar_casa,v.placar_fora,jogo.placar_home,jogo.placar_away);
-      await sbFetch(`/rest/v1/tbpalpites?id=eq.${v.id}`,
-        {method:'PATCH',body:JSON.stringify({pontuacao:pts})});
+async function jogoCalcPts(jogoId, jogoNome) {
+  var jogo = JOGOS.find(function(j) { return j.jogo_id === jogoId; });
+  if (!jogo || jogo.placar_home == null || jogo.placar_away == null) {
+    toast('Salve o placar final primeiro!', 'error'); return;
+  }
+  toast('Calculando pontuacao...', '');
+  try {
+    var r = await sbFetch('/rest/v1/tbpalpites?select=id,placar_casa,placar_fora&jogo_id=eq.' + encodeURIComponent(jogoId));
+    var votes = await r.json();
+    if (!Array.isArray(votes)) throw new Error('Dados invalidos');
+    var updated = 0;
+    for (var i = 0; i < votes.length; i++) {
+      var v = votes[i];
+      var pts = calcPts(v.placar_casa, v.placar_fora, jogo.placar_home, jogo.placar_away);
+      await sbFetch('/rest/v1/tbpalpites?id=eq.' + v.id, { method: 'PATCH', body: JSON.stringify({ pontuacao: pts }) });
       updated++;
     }
-    await sbFetch(`/rest/v1/tbjogos?jogo_id=eq.${jogoId}`,
-      {method:'PATCH',body:JSON.stringify({pontuacao_calculada:true})});
-    toast(`✅ ${updated} palpite(s) pontuados!`,'success');
+    await sbFetch('/rest/v1/tbjogos?jogo_id=eq.' + jogoId, { method: 'PATCH', body: JSON.stringify({ pontuacao_calculada: true }) });
+    toast(updated + ' palpites pontuados!', 'success');
     await renderAdminJogos(); loadRanking();
-  }catch(e){toast('❌ Erro: '+e.message,'error');}
+  } catch(e) { toast('Erro: ' + e.message, 'error'); }
 }
 
-function jogoResetVotos(jogoId){
-  if(!confirm('Resetar votos locais deste jogo?\n(Libera e-mails para votar novamente)')) return;
-  const s=ST.get(), voters=s.voters||{};
-  voters[jogoId]=[]; ST.set({voters});
+function jogoResetVotos(jogoId) {
+  if (!confirm('Resetar votos locais deste jogo? (Libera e-mails para votar novamente)')) return;
+  var s = ST.get(); var voters = s.voters || {};
+  voters[jogoId] = []; ST.set({ voters: voters });
   renderAdminJogos(); renderVote();
-  toast('🗑 Votos locais resetados.','success');
+  toast('Votos locais resetados.', 'success');
 }
 
-async function jogoDeletePalpites(jogoId, jogoNome){
-  if(!confirm(`⚠️ Apagar TODOS os palpites do jogo:\n"${jogoNome}"\n\nAção irreversível!`)) return;
-  if(!confirm('Segunda confirmação. Apagar mesmo?')) return;
-  toast('⏳ Apagando…','');
-  const r=await sbFetch(`/rest/v1/tbpalpites?jogo_id=eq.${encodeURIComponent(jogoId)}`,{method:'DELETE'});
-  if(r.ok||r.status===204){
-    const s=ST.get(), voters=s.voters||{};
-    voters[jogoId]=[]; ST.set({voters});
-    toast(`✅ Palpites de "${jogoNome}" apagados!`,'success');
+async function jogoDeletePalpites(jogoId, jogoNome) {
+  if (!confirm('Apagar TODOS os palpites do jogo: ' + jogoNome + '?\n\nAcao irreversivel!')) return;
+  if (!confirm('Segunda confirmacao. Apagar mesmo?')) return;
+  toast('Apagando...', '');
+  var r = await sbFetch('/rest/v1/tbpalpites?jogo_id=eq.' + encodeURIComponent(jogoId), { method: 'DELETE' });
+  if (r.ok || r.status === 204) {
+    var s = ST.get(); var voters = s.voters || {};
+    voters[jogoId] = []; ST.set({ voters: voters });
+    toast('Palpites apagados!', 'success');
     await renderAdminJogos(); renderVote();
-  } else toast('❌ Erro ao apagar.','error');
+  } else toast('Erro ao apagar.', 'error');
 }
 
-// ══════════════════════════════════════════
-// CONNECTION / SQL SETUP
-// ══════════════════════════════════════════
-async function testConn(){
-  toast('⏳ Testando…','');
-  const el=document.getElementById('connStatus');
-  el.className='conn-status idle'; el.innerHTML='⏳ &nbsp;Testando…';
-  try{
-    const r=await sbFetch('/rest/v1/tbjogos?select=jogo_id&limit=1',{signal:AbortSignal.timeout(8000)});
-    if(r.status===200||r.status===406){
-      el.className='conn-status ok'; el.innerHTML='✅ &nbsp;Conectado! tbjogos encontrada.';
-      toast('✅ Conexão OK!','success');
-    } else if(r.status===404||r.status===400||r.status===406){
-      el.className='conn-status err'; el.innerHTML='⚠️ &nbsp;Tabela tbjogos não encontrada.';
-      toast('⚠️ Execute o SQL Setup.','error');
+// ════════════════════════════════════════════════════════════════
+// CONNECTION TEST + SQL SETUP
+// ════════════════════════════════════════════════════════════════
+async function testConn() {
+  toast('Testando conexao...', '');
+  var el = document.getElementById('connStatus');
+  if (el) { el.className = 'conn-status idle'; el.innerHTML = 'Testando...'; }
+  try {
+    var r = await sbFetch('/rest/v1/tbjogos?select=id&limit=1');
+    if (r.status === 200 || r.status === 406) {
+      if (el) { el.className = 'conn-status ok'; el.innerHTML = 'Conectado ao Supabase!'; }
+      toast('Conexao OK!', 'success');
+    } else if (r.status === 401 || r.status === 403) {
+      if (el) { el.className = 'conn-status err'; el.innerHTML = 'Chave invalida (' + r.status + ')'; }
+      toast('Chave invalida.', 'error');
     } else {
-      el.className='conn-status err'; el.innerHTML='❌ &nbsp;Chave inválida ('+r.status+')';
-      toast('❌ Chave inválida.','error');
+      if (el) { el.className = 'conn-status err'; el.innerHTML = 'Tabela nao encontrada. Execute SQL Setup.'; }
+      toast('Tabela nao encontrada. Execute SQL Setup.', 'error');
     }
-  }catch(e){el.className='conn-status err';el.innerHTML='❌ &nbsp;'+e.message;toast('❌ '+e.message,'error');}
+  } catch(e) {
+    if (el) { el.className = 'conn-status err'; el.innerHTML = 'Falha: ' + e.message; }
+    toast('Falha: ' + e.message, 'error');
+  }
 }
 
-function showSqlSetup(){
-  const sql=`-- ══════════════════════════════════════════════
--- 1. TABELA DE JOGOS (controle admin)
--- ══════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS tbjogos (
-  id            BIGSERIAL PRIMARY KEY,
-  jogo_id       TEXT NOT NULL UNIQUE,       -- ex: C1, C2, C3
-  fase          TEXT,                       -- ex: Grupo C, Oitavas, Final
-  nome_home     TEXT NOT NULL,
-  nome_away     TEXT NOT NULL,
-  flag_home     TEXT,                       -- emoji: 🇧🇷
-  flag_away     TEXT,
-  flag_code_home TEXT,                      -- flagcdn code: br
-  flag_code_away TEXT,
-  data_label    TEXT,                       -- ex: 13/Jun · Sáb · 19h
-  cidade        TEXT,
-  kickoff_utc   TIMESTAMPTZ,               -- horário início UTC
-  deadline_utc  TIMESTAMPTZ,               -- prazo votação UTC (1h antes)
-  status        TEXT DEFAULT 'inativo',     -- inativo | aberto | encerrado
-  placar_home   INTEGER,                    -- resultado final
-  placar_away   INTEGER,
-  pontuacao_calculada BOOLEAN DEFAULT FALSE
-);
-
--- Add fase column if upgrading existing table:
--- ALTER TABLE tbjogos ADD COLUMN IF NOT EXISTS fase TEXT;
-
-ALTER TABLE tbjogos ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "tbjogos_select" ON tbjogos FOR SELECT USING (true);
-CREATE POLICY "tbjogos_insert" ON tbjogos FOR INSERT WITH CHECK (true);
-CREATE POLICY "tbjogos_update" ON tbjogos FOR UPDATE USING (true);
-CREATE POLICY "tbjogos_delete" ON tbjogos FOR DELETE USING (true);
-
--- ══════════════════════════════════════════════
--- 2. TABELA DE PALPITES
--- ══════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS tbpalpites (
-  id          BIGSERIAL PRIMARY KEY,
-  created_at  TIMESTAMPTZ DEFAULT NOW(),
-  jogo_id     TEXT NOT NULL,
-  jogo        TEXT NOT NULL,
-  nome        TEXT NOT NULL,
-  email       TEXT NOT NULL,
-  data_voto   TEXT,
-  placar_casa INTEGER,
-  placar_fora INTEGER,
-  pontuacao   INTEGER DEFAULT 0
-);
-
-ALTER TABLE tbpalpites ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "allow_insert"  ON tbpalpites FOR INSERT WITH CHECK (true);
-CREATE POLICY "allow_select"  ON tbpalpites FOR SELECT USING (true);
-CREATE POLICY "allow_update"  ON tbpalpites FOR UPDATE USING (true);
-CREATE POLICY "allow_delete"  ON tbpalpites FOR DELETE USING (true);
-
--- ══════════════════════════════════════════════
--- 3. INSERIR OS 3 JOGOS DO BRASIL
--- ══════════════════════════════════════════════
-INSERT INTO tbjogos (jogo_id,nome_home,nome_away,flag_home,flag_away,flag_code_home,flag_code_away,data_label,cidade,kickoff_utc,deadline_utc,status)
-VALUES
-  ('C1','Brasil','Marrocos','🇧🇷','🇲🇦','br','ma',
-   '13/Jun · Sáb · 19h (Brasília)','Nova York/NJ',
-   '2026-06-13T22:00:00Z','2026-06-13T21:00:00Z','inativo'),
-  ('C2','Brasil','Haiti','🇧🇷','🇭🇹','br','ht',
-   '19/Jun · Sex · 22h (Brasília)','Filadélfia',
-   '2026-06-20T01:00:00Z','2026-06-20T00:00:00Z','inativo'),
-  ('C3','Escócia','Brasil','🏴󠁧󠁢󠁳󠁣󠁴󠁿','🇧🇷','gb-sct','br',
-   '24/Jun · Qua · 19h (Brasília)','Miami',
-   '2026-06-24T22:00:00Z','2026-06-24T21:00:00Z','inativo')
-ON CONFLICT (jogo_id) DO NOTHING;`;
-  const box=document.getElementById('sqlBox');
-  box.innerHTML=`
-    <p style="font-family:'Barlow Condensed',sans-serif;font-size:12px;color:var(--blue);letter-spacing:2px;margin:10px 0 8px;font-weight:700;">
-      📄 SQL SETUP — Execute no Supabase SQL Editor:</p>
-    <pre id="sqlPre" style="background:var(--el);padding:12px;border-radius:8px;font-size:11px;color:#e8eaf0;line-height:1.6;white-space:pre-wrap;overflow-x:auto;margin-bottom:10px;">${sql}</pre>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn btn-blue" onclick="navigator.clipboard.writeText(document.getElementById('sqlPre').textContent).then(()=>toast('✅ SQL copiado!','success'))">📋 Copiar SQL</button>
-      <a href="https://supabase.com/dashboard/project/xfoufsujlznedvebjeim/sql/new" target="_blank" class="btn btn-green">🔗 Abrir SQL Editor</a>
-    </div>`;
+function showSqlSetup() {
+  var sql = 'CREATE TABLE IF NOT EXISTS tbjogos (\n'
+    + '  id BIGSERIAL PRIMARY KEY,\n'
+    + '  jogo_id TEXT NOT NULL UNIQUE,\n'
+    + '  fase TEXT,\n'
+    + '  nome_home TEXT NOT NULL,\n'
+    + '  nome_away TEXT NOT NULL,\n'
+    + '  flag_home TEXT,\n'
+    + '  flag_away TEXT,\n'
+    + '  flag_code_home TEXT,\n'
+    + '  flag_code_away TEXT,\n'
+    + '  data_label TEXT,\n'
+    + '  cidade TEXT,\n'
+    + '  kickoff_utc TIMESTAMPTZ,\n'
+    + '  deadline_utc TIMESTAMPTZ,\n'
+    + '  status TEXT DEFAULT \'inativo\',\n'
+    + '  placar_home INTEGER,\n'
+    + '  placar_away INTEGER,\n'
+    + '  pontuacao_calculada BOOLEAN DEFAULT FALSE\n'
+    + ');\n'
+    + 'ALTER TABLE tbjogos ENABLE ROW LEVEL SECURITY;\n'
+    + 'CREATE POLICY "tbjp" ON tbjogos FOR ALL USING (true) WITH CHECK (true);\n\n'
+    + 'CREATE TABLE IF NOT EXISTS tbpalpites (\n'
+    + '  id BIGSERIAL PRIMARY KEY,\n'
+    + '  created_at TIMESTAMPTZ DEFAULT NOW(),\n'
+    + '  jogo_id TEXT NOT NULL,\n'
+    + '  jogo TEXT NOT NULL,\n'
+    + '  nome TEXT NOT NULL,\n'
+    + '  email TEXT NOT NULL,\n'
+    + '  data_voto TEXT,\n'
+    + '  placar_casa INTEGER,\n'
+    + '  placar_fora INTEGER,\n'
+    + '  pontuacao INTEGER DEFAULT 0\n'
+    + ');\n'
+    + 'ALTER TABLE tbpalpites ENABLE ROW LEVEL SECURITY;\n'
+    + 'CREATE POLICY "tbpp" ON tbpalpites FOR ALL USING (true) WITH CHECK (true);\n\n'
+    + 'INSERT INTO tbjogos (jogo_id,fase,nome_home,nome_away,flag_home,flag_away,flag_code_home,flag_code_away,data_label,cidade,kickoff_utc,deadline_utc,status)\n'
+    + 'VALUES\n'
+    + '  (\'C1\',\'Grupo C\',\'Brasil\',\'Marrocos\',\'🇧🇷\',\'🇲🇦\',\'br\',\'ma\',\'13/Jun - Sab - 19h (Brasilia)\',\'Nova York/NJ\',\'2026-06-13T22:00:00Z\',\'2026-06-13T21:00:00Z\',\'inativo\'),\n'
+    + '  (\'C2\',\'Grupo C\',\'Brasil\',\'Haiti\',\'🇧🇷\',\'🇭🇹\',\'br\',\'ht\',\'19/Jun - Sex - 22h (Brasilia)\',\'Filadelfia\',\'2026-06-20T01:00:00Z\',\'2026-06-20T00:00:00Z\',\'inativo\'),\n'
+    + '  (\'C3\',\'Grupo C\',\'Escocia\',\'Brasil\',\'🏴\',\'🇧🇷\',\'gb-sct\',\'br\',\'24/Jun - Qua - 19h (Brasilia)\',\'Miami\',\'2026-06-24T22:00:00Z\',\'2026-06-24T21:00:00Z\',\'inativo\')\n'
+    + 'ON CONFLICT (jogo_id) DO NOTHING;';
+  var box = document.getElementById('sqlBox');
+  if (!box) return;
+  box.innerHTML = '<div style="margin-top:10px;">'
+    + '<p style="color:var(--blue);font-size:12px;margin-bottom:8px;">SQL Setup — Execute no Supabase SQL Editor:</p>'
+    + '<textarea id="sqlPre" style="width:100%;min-height:300px;background:var(--el);color:#e8eaf0;border:1px solid #444;border-radius:8px;padding:12px;font-size:11px;font-family:monospace;resize:vertical;">'
+    + sql + '</textarea>'
+    + '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">'
+    + '<button class="btn btn-blue" id="btnCopySql">Copiar SQL</button>'
+    + '<a href="https://supabase.com/dashboard/project/xfoufsujlznedvebjeim/sql/new" target="_blank" class="btn btn-green">Abrir SQL Editor</a>'
+    + '<button class="btn btn-outline" id="btnDiag">Diagnosticar</button>'
+    + '</div></div>';
+  document.getElementById('btnCopySql').onclick = function() {
+    navigator.clipboard.writeText(document.getElementById('sqlPre').value)
+      .then(function() { toast('SQL copiado!', 'success'); });
+  };
+  document.getElementById('btnDiag').onclick = diagnoseTables;
 }
 
-// ══════════════════════════════════════════
+async function diagnoseTables() {
+  toast('Diagnosticando...', '');
+  var box = document.getElementById('sqlBox');
+  var html = '<div style="padding:12px;background:var(--el);border-radius:8px;margin-top:10px;">';
+  html += '<div style="color:var(--gold);font-size:14px;margin-bottom:10px;">Resultado do Diagnostico</div>';
+
+  // Test tbjogos read
+  try {
+    var r1 = await sbFetch('/rest/v1/tbjogos?select=id&limit=1');
+    var b1 = await r1.text();
+    if (r1.status === 200) html += '<div style="color:var(--green);font-size:13px;margin-bottom:6px;">tbjogos: OK</div>';
+    else html += '<div style="color:var(--red);font-size:13px;margin-bottom:6px;">tbjogos erro: HTTP ' + r1.status + '</div>';
+  } catch(e1) { html += '<div style="color:var(--red);font-size:13px;margin-bottom:6px;">tbjogos: ' + e1.message + '</div>'; }
+
+  // Test tbpalpites read
+  try {
+    var r2 = await sbFetch('/rest/v1/tbpalpites?select=id,placar_casa,placar_fora&limit=1');
+    if (r2.status === 200) html += '<div style="color:var(--green);font-size:13px;margin-bottom:6px;">tbpalpites leitura: OK</div>';
+    else {
+      var b2 = await r2.text();
+      html += '<div style="color:var(--red);font-size:13px;margin-bottom:6px;">tbpalpites leitura erro: ' + r2.status + '</div>';
+    }
+  } catch(e2) { html += '<div style="color:var(--red);font-size:13px;margin-bottom:6px;">tbpalpites: ' + e2.message + '</div>'; }
+
+  // Test INSERT
+  try {
+    var tp = { jogo_id: '_TEST_', jogo: 'T x D', nome: 'Sys', email: 'd@d.test', data_voto: 'test', placar_casa: 0, placar_fora: 0, pontuacao: 0 };
+    var r3 = await sbFetch('/rest/v1/tbpalpites', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify(tp) });
+    var b3 = await r3.text();
+    if (r3.status === 201) {
+      html += '<div style="color:var(--green);font-size:13px;margin-bottom:6px;">tbpalpites INSERT: OK - colunas corretas!</div>';
+      await sbFetch('/rest/v1/tbpalpites?jogo_id=eq._TEST_', { method: 'DELETE' });
+    } else {
+      var em3 = b3;
+      try { var ej3 = JSON.parse(b3); em3 = ej3.message || ej3.hint || b3; } catch(ex) {}
+      html += '<div style="color:var(--red);font-size:13px;margin-bottom:6px;">tbpalpites INSERT erro HTTP ' + r3.status + ': ' + em3.slice(0, 100) + '</div>';
+      html += '<p style="color:var(--gold);font-size:12px;margin:8px 0 4px;">Execute o SQL Setup para recriar a tabela corretamente.</p>';
+    }
+  } catch(e3) { html += '<div style="color:var(--red);font-size:13px;">INSERT excecao: ' + e3.message + '</div>'; }
+
+  html += '</div>';
+  if (box) box.innerHTML = html;
+  toast('Diagnostico concluido!', 'success');
+}
+
+// ════════════════════════════════════════════════════════════════
 // CONFIG
-// ══════════════════════════════════════════
-function saveCfg(){
-  localStorage.setItem('sbAnonKey',document.getElementById('cfgAnonKey').value.trim());
-  const n=document.getElementById('bolaoName').value;
-  localStorage.setItem('bolaoName',n); if(n)document.title=n;
+// ════════════════════════════════════════════════════════════════
+function saveCfg() {
+  var key = document.getElementById('cfgAnonKey') ? document.getElementById('cfgAnonKey').value.trim() : '';
+  if (key) localStorage.setItem('sbAnonKey', key);
+  var n = document.getElementById('bolaoName') ? document.getElementById('bolaoName').value : '';
+  if (n) { localStorage.setItem('bolaoName', n); document.title = n; }
 }
-function loadCfg(){
-  document.getElementById('cfgAnonKey').value=localStorage.getItem('sbAnonKey')||SB_KEY_DEFAULT;
-  const n=localStorage.getItem('bolaoName')||'Bolão Copa 2026 · Nova Chevrolet';
-  document.getElementById('bolaoName').value=n; document.title=n;
+function loadCfg() {
+  var el = document.getElementById('cfgAnonKey');
+  if (el) el.value = localStorage.getItem('sbAnonKey') || SB_KEY_DEFAULT;
+  var n = localStorage.getItem('bolaoName') || 'Bolao Copa 2026 - Nova Chevrolet';
+  var bn = document.getElementById('bolaoName');
+  if (bn) bn.value = n;
+  document.title = n;
 }
 
-// ══════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════
 // TABS
-// ══════════════════════════════════════════
-function switchTab(name){
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('panel-'+name).classList.add('active');
-  ['palpites','ranking','config'].forEach((n,i)=>{
-    if(n===name)document.querySelectorAll('.tab-btn')[i].classList.add('active');});
-  if(name==='ranking')loadRanking();
-  if(name==='config'){loadJogos().then(()=>renderAdminJogos());}
+// ════════════════════════════════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  var panel = document.getElementById('panel-' + name);
+  if (panel) panel.classList.add('active');
+  var tabNames = ['palpites', 'ranking', 'config'];
+  var tabs = document.querySelectorAll('.tab-btn');
+  for (var i = 0; i < tabNames.length; i++) {
+    if (tabNames[i] === name && tabs[i]) tabs[i].classList.add('active');
+  }
+  if (name === 'ranking') loadRanking();
+  if (name === 'config') { loadJogos().then(function() { renderAdminJogos(); }); }
 }
 
-// ══════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════
 // ADMIN AUTH
-// ══════════════════════════════════════════
-const AU='novachevrolet',AP='bolao2026';
-let adminLogged=false;
-function requireAdmin(tab){
-  if(adminLogged){switchTab(tab);return;}
-  document.getElementById('loginOverlay').classList.add('show');
-  ['lUser','lPass'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('lErr').textContent='';
-  setTimeout(()=>document.getElementById('lUser').focus(),100);
-  window._at=tab;
+// ════════════════════════════════════════════════════════════════
+var adminLogged = false;
+var pendingTab = 'config';
+function requireAdmin(tab) {
+  if (adminLogged) { switchTab(tab); return; }
+  pendingTab = tab;
+  var ov = document.getElementById('loginOverlay');
+  if (ov) ov.classList.add('show');
+  var lu = document.getElementById('lUser'); var lp = document.getElementById('lPass');
+  var le = document.getElementById('lErr');
+  if (lu) lu.value = ''; if (lp) lp.value = ''; if (le) le.textContent = '';
+  setTimeout(function() { if (lu) lu.focus(); }, 100);
 }
-function closeLogin(){document.getElementById('loginOverlay').classList.remove('show');}
-function doLogin(){
-  const u=document.getElementById('lUser').value.trim(), p=document.getElementById('lPass').value;
-  if(u===AU&&p===AP){
-    adminLogged=true; document.getElementById('loginOverlay').classList.remove('show');
-    switchTab(window._at||'config'); toast('✅ Acesso autorizado!','success');
+function closeLogin() {
+  var ov = document.getElementById('loginOverlay');
+  if (ov) ov.classList.remove('show');
+}
+function doLogin() {
+  var u = document.getElementById('lUser') ? document.getElementById('lUser').value.trim() : '';
+  var p = document.getElementById('lPass') ? document.getElementById('lPass').value : '';
+  var le = document.getElementById('lErr');
+  if (u === 'novachevrolet' && p === 'bolao2026') {
+    adminLogged = true; closeLogin(); switchTab(pendingTab); toast('Acesso autorizado!', 'success');
   } else {
-    document.getElementById('lErr').textContent='Usuário ou senha incorretos.';
-    document.getElementById('lPass').value=''; document.getElementById('lPass').focus();
+    if (le) le.textContent = 'Usuario ou senha incorretos.';
+    if (document.getElementById('lPass')) { document.getElementById('lPass').value = ''; document.getElementById('lPass').focus(); }
   }
 }
-function logoutAdmin(){adminLogged=false;switchTab('palpites');toast('👋 Sessão encerrada.','');}
+function logoutAdmin() { adminLogged = false; switchTab('palpites'); toast('Sessao encerrada.', ''); }
 
-// ══════════════════════════════════════════
-// TOAST
-// ══════════════════════════════════════════
-let _tt;
-function toast(msg,type){
-  clearTimeout(_tt);const t=document.getElementById('toast');
-  document.getElementById('toastMsg').textContent=msg;
-  t.className='toast '+(type||'')+' show';
-  _tt=setTimeout(()=>t.classList.remove('show'),4000);
+// ════════════════════════════════════════════════════════════════
+// JOGO FORM — CADASTRO / EDICAO
+// ════════════════════════════════════════════════════════════════
+function toLocalInput(utcStr) {
+  if (!utcStr) return '';
+  var d = new Date(utcStr);
+  var off = d.getTimezoneOffset();
+  var local = new Date(d.getTime() - off * 60000);
+  return local.toISOString().slice(0, 16);
+}
+function toUTC(localStr) { return localStr ? new Date(localStr).toISOString() : null; }
+
+function autoDeadline() {
+  var k = document.getElementById('fKickoff') ? document.getElementById('fKickoff').value : '';
+  if (!k) return;
+  var ko = new Date(k); ko.setHours(ko.getHours() - 1);
+  var off = ko.getTimezoneOffset();
+  var local = new Date(ko.getTime() - off * 60000);
+  var dl = document.getElementById('fDeadline');
+  if (dl) dl.value = local.toISOString().slice(0, 16);
 }
 
-// ══════════════════════════════════════════
-// TICK — countdown + auto-close check
-// ══════════════════════════════════════════
-function tick(){
-  tickClock();
-  const j=getActiveJogo(); if(!j)return;
-  // Auto-close if deadline passed
-  if(deadlinePassed(j)&&j.status==='aberto'){
-    jogoSetStatus(j.jogo_id,'encerrado'); return;
-  }
-  const cd=countdown(j.deadline_utc);
-  const urgent=cd&&(new Date(j.deadline_utc)-Date.now())<600000;
-  const cv=document.getElementById('cdVal');
-  if(cv){cv.textContent=cd||'—';cv.className='cd-val'+(urgent?' urgent':'');}
-  const cj=document.getElementById(`jg-cd-${j.jogo_id}`);
-  if(cj){cj.textContent=cd||'—';cj.className='jg-cd'+(urgent?' urgent':'');}
+function previewFlags() {
+  var fh = document.getElementById('fFlagHome') ? document.getElementById('fFlagHome').value : '';
+  var fa = document.getElementById('fFlagAway') ? document.getElementById('fFlagAway').value : '';
+  var ch = document.getElementById('fCodeHome') ? document.getElementById('fCodeHome').value.trim().toLowerCase() : '';
+  var ca = document.getElementById('fCodeAway') ? document.getElementById('fCodeAway').value.trim().toLowerCase() : '';
+  var ph = document.getElementById('prevFlagHome'); if (ph) ph.textContent = fh;
+  var pa = document.getElementById('prevFlagAway'); if (pa) pa.textContent = fa;
+  var phc = document.getElementById('prevCodeHome');
+  var pac = document.getElementById('prevCodeAway');
+  if (phc) phc.innerHTML = ch ? '<img src="https://flagcdn.com/w40/' + ch + '.png" height="20" style="border-radius:3px;">' : '';
+  if (pac) pac.innerHTML = ca ? '<img src="https://flagcdn.com/w40/' + ca + '.png" height="20" style="border-radius:3px;">' : '';
 }
-setInterval(tick,1000);
 
-// ══════════════════════════════════════════
-// INIT
-// ══════════════════════════════════════════
-loadCfg();
-loadJogos().then(()=>{
-  renderVote();
-  // Show setup hint if no jogos found
-  if(!JOGOS.length){
-    setTimeout(()=>{
-      toast('⚠️ Tabelas não encontradas. Acesse ⚙️ Config e execute o SQL Setup.','error');
-    },1000);
-  }
-});
-
-// ══════════════════════════════════════════
-// JOGO FORM — CADASTRO / EDIÇÃO
-// ══════════════════════════════════════════
-function openJogoForm(jogo){
-  // jogo = null → new | jogo = object → edit
-  const modal = document.getElementById('jogoModal');
-  const isNew = !jogo;
-
-  document.getElementById('modalTitleText').textContent = isNew ? '➕ Cadastrar Jogo' : '✏️ Editar Jogo: '+jogo.jogo_id;
-  document.getElementById('btnDeleteJogo').style.display = isNew ? 'none' : 'inline-flex';
-
-  // Populate fields
-  document.getElementById('fJogoId').value      = jogo?.id ?? '';
-  document.getElementById('fJogoKey').value     = jogo?.jogo_id ?? '';
-  document.getElementById('fJogoKey').readOnly  = !isNew; // can't change PK on edit
-  document.getElementById('fJogoKey').style.opacity = isNew ? '1' : '.5';
-  document.getElementById('fStatus').value      = jogo?.status ?? 'inativo';
-  document.getElementById('fFase').value         = jogo?.fase ?? '';
-  document.getElementById('fNomeHome').value    = jogo?.nome_home ?? '';
-  document.getElementById('fNomeAway').value    = jogo?.nome_away ?? '';
-  document.getElementById('fFlagHome').value    = jogo?.flag_home ?? '';
-  document.getElementById('fFlagAway').value    = jogo?.flag_away ?? '';
-  document.getElementById('fCodeHome').value    = jogo?.flag_code_home ?? '';
-  document.getElementById('fCodeAway').value    = jogo?.flag_code_away ?? '';
-  document.getElementById('fDataLabel').value   = jogo?.data_label ?? '';
-  document.getElementById('fCidade').value      = jogo?.cidade ?? '';
-  document.getElementById('fKickoff').value     = jogo?.kickoff_utc ? toLocalInput(jogo.kickoff_utc) : '';
-  document.getElementById('fDeadline').value    = jogo?.deadline_utc ? toLocalInput(jogo.deadline_utc) : '';
-  document.getElementById('fPlacarHome').value  = jogo?.placar_home ?? '';
-  document.getElementById('fPlacarAway').value  = jogo?.placar_away ?? '';
-  document.getElementById('fPontuacaoCalc').value = jogo?.pontuacao_calculada ? 'true' : 'false';
-
+function openJogoForm(jogo) {
+  var modal = document.getElementById('jogoModal');
+  if (!modal) return;
+  var isNew = !jogo;
+  var title = document.getElementById('modalTitleText');
+  var delBtn = document.getElementById('btnDeleteJogo');
+  if (title) title.textContent = isNew ? 'Cadastrar Jogo' : 'Editar: ' + jogo.jogo_id;
+  if (delBtn) delBtn.style.display = isNew ? 'none' : 'inline-flex';
+  function setVal(id, val) { var el = document.getElementById(id); if (el) el.value = val || ''; }
+  function setRO(id, ro, op) { var el = document.getElementById(id); if (el) { el.readOnly = ro; el.style.opacity = op; } }
+  setVal('fJogoId',    jogo ? (jogo.id || '') : '');
+  setVal('fJogoKey',   jogo ? jogo.jogo_id : '');  setRO('fJogoKey', !isNew, isNew ? '1' : '.55');
+  setVal('fFase',      jogo ? (jogo.fase || '') : '');
+  setVal('fStatus',    jogo ? (jogo.status || 'inativo') : 'inativo');
+  setVal('fNomeHome',  jogo ? jogo.nome_home : '');
+  setVal('fNomeAway',  jogo ? jogo.nome_away : '');
+  setVal('fFlagHome',  jogo ? (jogo.flag_home || '') : '');
+  setVal('fFlagAway',  jogo ? (jogo.flag_away || '') : '');
+  setVal('fCodeHome',  jogo ? (jogo.flag_code_home || '') : '');
+  setVal('fCodeAway',  jogo ? (jogo.flag_code_away || '') : '');
+  setVal('fDataLabel', jogo ? (jogo.data_label || '') : '');
+  setVal('fCidade',    jogo ? (jogo.cidade || '') : '');
+  setVal('fKickoff',   jogo && jogo.kickoff_utc ? toLocalInput(jogo.kickoff_utc) : '');
+  setVal('fDeadline',  jogo && jogo.deadline_utc ? toLocalInput(jogo.deadline_utc) : '');
+  setVal('fPlacarHome', jogo && jogo.placar_home != null ? jogo.placar_home : '');
+  setVal('fPlacarAway', jogo && jogo.placar_away != null ? jogo.placar_away : '');
+  setVal('fPontuacaoCalc', jogo && jogo.pontuacao_calculada ? 'true' : 'false');
   previewFlags();
   modal.classList.add('show');
 }
 
-function closeJogoForm(){
-  document.getElementById('jogoModal').classList.remove('show');
+function closeJogoForm() {
+  var modal = document.getElementById('jogoModal');
+  if (modal) modal.classList.remove('show');
 }
 
-// Convert UTC ISO string to datetime-local input value
-function toLocalInput(utcStr){
-  if(!utcStr) return '';
-  const d = new Date(utcStr);
-  const pad = n => String(n).padStart(2,'0');
-  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())
-    +'T'+pad(d.getHours())+':'+pad(d.getMinutes());
-}
+async function saveJogo() {
+  var jogoId = document.getElementById('fJogoId') ? document.getElementById('fJogoId').value : '';
+  var jogoKey = document.getElementById('fJogoKey') ? document.getElementById('fJogoKey').value.trim().toUpperCase() : '';
+  var isNew = !jogoId;
+  if (!jogoKey) { toast('Informe o ID do jogo!', 'error'); return; }
+  var nomeHome = document.getElementById('fNomeHome') ? document.getElementById('fNomeHome').value.trim() : '';
+  var nomeAway = document.getElementById('fNomeAway') ? document.getElementById('fNomeAway').value.trim() : '';
+  if (!nomeHome) { toast('Informe o nome do time da casa!', 'error'); return; }
+  if (!nomeAway) { toast('Informe o nome do time visitante!', 'error'); return; }
+  var kickoff = document.getElementById('fKickoff') ? document.getElementById('fKickoff').value : '';
+  if (!kickoff) { toast('Informe a data/hora de inicio!', 'error'); return; }
+  var deadline = document.getElementById('fDeadline') ? document.getElementById('fDeadline').value : '';
+  if (!deadline) { toast('Informe o prazo de votacao!', 'error'); return; }
+  var ph = document.getElementById('fPlacarHome') ? document.getElementById('fPlacarHome').value : '';
+  var pa = document.getElementById('fPlacarAway') ? document.getElementById('fPlacarAway').value : '';
+  var pontuacaoCalc = document.getElementById('fPontuacaoCalc') ? document.getElementById('fPontuacaoCalc').value : 'false';
 
-// Convert datetime-local value to UTC ISO string
-function toUTC(localVal){
-  if(!localVal) return null;
-  return new Date(localVal).toISOString();
-}
-
-async function saveJogo(){
-  const jogoKey = document.getElementById('fJogoKey').value.trim();
-  const nomeHome = document.getElementById('fNomeHome').value.trim();
-  const nomeAway = document.getElementById('fNomeAway').value.trim();
-  if(!jogoKey){toast('⚠️ Informe o ID do jogo!','error');return;}
-  if(!nomeHome||!nomeAway){toast('⚠️ Informe os nomes dos times!','error');return;}
-
-  const ph = document.getElementById('fPlacarHome').value;
-  const pa = document.getElementById('fPlacarAway').value;
-
-  const payload = {
-    jogo_id:             jogoKey,
-    status:              document.getElementById('fStatus').value,
-    fase:                document.getElementById('fFase').value.trim() || null,
-    nome_home:           nomeHome,
-    nome_away:           nomeAway,
-    flag_home:           document.getElementById('fFlagHome').value.trim() || null,
-    flag_away:           document.getElementById('fFlagAway').value.trim() || null,
-    flag_code_home:      document.getElementById('fCodeHome').value.trim() || null,
-    flag_code_away:      document.getElementById('fCodeAway').value.trim() || null,
-    data_label:          document.getElementById('fDataLabel').value.trim() || null,
-    cidade:              document.getElementById('fCidade').value.trim() || null,
-    kickoff_utc:         toUTC(document.getElementById('fKickoff').value) || null,
-    deadline_utc:        toUTC(document.getElementById('fDeadline').value) || null,
-    placar_home:         ph !== '' ? parseInt(ph) : null,
-    placar_away:         pa !== '' ? parseInt(pa) : null,
-    pontuacao_calculada: document.getElementById('fPontuacaoCalc').value === 'true',
+  var payload = {
+    jogo_id: jogoKey,
+    fase: (document.getElementById('fFase') ? document.getElementById('fFase').value : '') || null,
+    status: document.getElementById('fStatus') ? document.getElementById('fStatus').value : 'inativo',
+    nome_home: nomeHome, nome_away: nomeAway,
+    flag_home: (document.getElementById('fFlagHome') ? document.getElementById('fFlagHome').value.trim() : '') || null,
+    flag_away: (document.getElementById('fFlagAway') ? document.getElementById('fFlagAway').value.trim() : '') || null,
+    flag_code_home: (document.getElementById('fCodeHome') ? document.getElementById('fCodeHome').value.trim().toLowerCase() : '') || null,
+    flag_code_away: (document.getElementById('fCodeAway') ? document.getElementById('fCodeAway').value.trim().toLowerCase() : '') || null,
+    data_label: (document.getElementById('fDataLabel') ? document.getElementById('fDataLabel').value.trim() : '') || null,
+    cidade: (document.getElementById('fCidade') ? document.getElementById('fCidade').value.trim() : '') || null,
+    kickoff_utc: toUTC(kickoff),
+    deadline_utc: toUTC(deadline),
+    placar_home: ph !== '' ? parseInt(ph) : null,
+    placar_away: pa !== '' ? parseInt(pa) : null,
+    pontuacao_calculada: pontuacaoCalc === 'true'
   };
 
-  const existingId = document.getElementById('fJogoId').value;
-  const isNew = !existingId;
-  toast('⏳ Salvando…','');
-
-  try{
-    let r;
-    if(isNew){
-      // INSERT
-      r = await sbFetch('/rest/v1/tbjogos', {
-        method:'POST',
-        prefer:'return=minimal',
-        body: JSON.stringify(payload)
-      });
-    } else {
-      // UPDATE by jogo_id
-      r = await sbFetch('/rest/v1/tbjogos?jogo_id=eq.'+encodeURIComponent(jogoKey), {
-        method:'PATCH',
-        prefer:'return=minimal',
-        body: JSON.stringify(payload)
-      });
-    }
-    if(r.ok || r.status===201 || r.status===204){
-      toast('✅ Jogo '+jogoKey+' '+(isNew?'cadastrado':'atualizado')+'!','success');
-      closeJogoForm();
-      await loadJogos();
-      renderAdminJogos();
-    } else {
-      const err = await r.text();
-      toast('❌ Erro ao salvar: '+err.substring(0,80),'error');
-    }
-  }catch(e){
-    toast('❌ '+e.message,'error');
+  toast('Salvando jogo...', '');
+  var r;
+  if (isNew) {
+    r = await sbFetch('/rest/v1/tbjogos', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify(payload) });
+  } else {
+    r = await sbFetch('/rest/v1/tbjogos?id=eq.' + jogoId, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(payload) });
+  }
+  if (r.ok || r.status === 201 || r.status === 204) {
+    toast('Jogo ' + (isNew ? 'cadastrado' : 'atualizado') + '!', 'success');
+    closeJogoForm();
+    await loadJogos(); renderAdminJogos(); renderVote();
+  } else {
+    var err = await r.text();
+    toast('Erro ao salvar: ' + err.slice(0, 60), 'error');
   }
 }
 
-async function deleteJogo(){
-  const jogoKey = document.getElementById('fJogoKey').value.trim();
-  if(!jogoKey) return;
-  if(!confirm('Excluir o jogo "'+jogoKey+'" permanentemente?\nIsso NÃO apaga os palpites.')) return;
-  toast('⏳ Excluindo…','');
-  try{
-    const r = await sbFetch('/rest/v1/tbjogos?jogo_id=eq.'+encodeURIComponent(jogoKey), {method:'DELETE'});
-    if(r.ok || r.status===204){
-      toast('✅ Jogo '+jogoKey+' excluído.','success');
-      closeJogoForm();
-      await loadJogos();
-      renderAdminJogos();
-    } else {
-      toast('❌ Erro ao excluir.','error');
-    }
-  }catch(e){
-    toast('❌ '+e.message,'error');
+async function deleteJogo() {
+  var jogoId = document.getElementById('fJogoId') ? document.getElementById('fJogoId').value : '';
+  var jogoKey = document.getElementById('fJogoKey') ? document.getElementById('fJogoKey').value : '';
+  if (!jogoId) { toast('Jogo nao encontrado.', 'error'); return; }
+  if (!confirm('Excluir o jogo "' + jogoKey + '"?\nIsso NAO apaga os palpites relacionados.')) return;
+  var r = await sbFetch('/rest/v1/tbjogos?id=eq.' + jogoId, { method: 'DELETE' });
+  if (r.ok || r.status === 204) {
+    toast('Jogo excluido.', 'success'); closeJogoForm();
+    await loadJogos(); renderAdminJogos(); renderVote();
+  } else toast('Erro ao excluir.', 'error');
+}
+
+// ════════════════════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════════════════════
+var toastTimer;
+function toast(msg, type) {
+  clearTimeout(toastTimer);
+  var t = document.getElementById('toast');
+  var tm = document.getElementById('toastMsg');
+  if (!t || !tm) return;
+  tm.textContent = msg;
+  t.className = 'toast ' + (type || '') + ' show';
+  toastTimer = setTimeout(function() { t.classList.remove('show'); }, 4000);
+}
+
+// ════════════════════════════════════════════════════════════════
+// TICK — 1 second interval
+// ════════════════════════════════════════════════════════════════
+function tick() {
+  tickClock();
+  var j = getActiveJogo();
+  if (!j) return;
+  // Update countdown in vote area
+  if (deadlinePassed(j)) {
+    var area = document.getElementById('voteArea');
+    if (area && !area.querySelector('.banner.closed')) { renderVote(); if (adminLogged) renderAdminJogos(); }
+    return;
   }
+  var cd = countdown(j.deadline_utc);
+  var urgent = (new Date(j.deadline_utc) - Date.now()) < 600000;
+  var cv = document.getElementById('cdVal');
+  if (cv) { cv.textContent = cd || '-'; cv.className = 'cd-val' + (urgent ? ' urgent' : ''); }
+  var cj = document.getElementById('jg-cd-' + j.jogo_id);
+  if (cj) { cj.textContent = cd || '-'; cj.className = 'jg-cd' + (urgent ? ' urgent' : ''); }
 }
+setInterval(tick, 1000);
 
-
-
-// Auto-deadline: 1h before kickoff
-function autoDeadline(){
-  const k=document.getElementById('fKickoff').value;
-  if(!k)return;
-  const ko=new Date(k);
-  ko.setHours(ko.getHours()-1);
-  const off=ko.getTimezoneOffset();
-  const local=new Date(ko.getTime()-off*60000);
-  document.getElementById('fDeadline').value=local.toISOString().slice(0,16);
-}
-
-// Live flag preview
-function previewFlags(){
-  const fh=document.getElementById('fFlagHome').value;
-  const fa=document.getElementById('fFlagAway').value;
-  const ch=document.getElementById('fCodeHome').value.trim().toLowerCase();
-  const ca=document.getElementById('fCodeAway').value.trim().toLowerCase();
-  const ph=document.getElementById('prevFlagHome');
-  const pa=document.getElementById('prevFlagAway');
-  const phc=document.getElementById('prevCodeHome');
-  const pac=document.getElementById('prevCodeAway');
-  if(ph)ph.textContent=fh;
-  if(pa)pa.textContent=fa;
-  if(phc)phc.innerHTML=ch?'<img src="https://flagcdn.com/w40/'+ch+'.png" height="20" style="border-radius:3px;vertical-align:middle;" onerror="this.style.display=\'none\'">':'';
-  if(pac)pac.innerHTML=ca?'<img src="https://flagcdn.com/w40/'+ca+'.png" height="20" style="border-radius:3px;vertical-align:middle;" onerror="this.style.display=\'none\'">':'';
-}
-
-function closeJogoModal(){ closeJogoForm(); }
-
-
-// ══════════════════════════════════════════
-// TABLE DIAGNOSTIC
-// ══════════════════════════════════════════
-async function diagnoseTables(){
-  toast('⏳ Diagnosticando tabelas…','');
-  const results = [];
-
-  // Test tbjogos
-  try{
-    const r = await sbFetch('/rest/v1/tbjogos?select=id,jogo_id,status&limit=1');
-    const status = r.status;
-    const body = await r.text();
-    if(status===200){
-      const rows = JSON.parse(body);
-      results.push('✅ tbjogos: OK ('+rows.length+' jogo(s) encontrado(s))');
-    } else {
-      results.push('❌ tbjogos: HTTP '+status+' — '+body.slice(0,80));
-    }
-  }catch(e){ results.push('❌ tbjogos: '+e.message); }
-
-  // Test tbpalpites read
-  try{
-    const r = await sbFetch('/rest/v1/tbpalpites?select=id,jogo_id,placar_casa,placar_fora&limit=1');
-    const status = r.status;
-    const body = await r.text();
-    if(status===200){
-      results.push('✅ tbpalpites: OK (leitura funcionando)');
-    } else {
-      results.push('❌ tbpalpites leitura: HTTP '+status+' — '+body.slice(0,80));
-    }
-  }catch(e){ results.push('❌ tbpalpites: '+e.message); }
-
-  // Test tbpalpites INSERT with test row
-  try{
-    const testPayload = {
-      jogo_id:'_TEST_',jogo:'Teste x Diagnóstico',nome:'Sistema',
-      email:'diag@bolao.test',data_voto:'teste',
-      placar_casa:0,placar_fora:0,pontuacao:0
-    };
-    const r = await sbFetch('/rest/v1/tbpalpites',{
-      method:'POST',prefer:'return=minimal',
-      body:JSON.stringify(testPayload)
-    });
-    const status = r.status;
-    const body = await r.text();
-    if(status===201){
-      results.push('✅ tbpalpites INSERT: OK — colunas corretas!');
-      // Clean up test row
-      await sbFetch('/rest/v1/tbpalpites?jogo_id=eq._TEST_',{method:'DELETE'});
-    } else {
-      let errMsg = body;
-      try{ const j=JSON.parse(body); errMsg=j.message||j.hint||j.details||body; }catch(e2){}
-      results.push('❌ tbpalpites INSERT: HTTP '+status+' — '+errMsg.slice(0,120));
-      // Show the fix SQL
-      const fixSql = 'DROP TABLE IF EXISTS tbpalpites;\n'+
-        'CREATE TABLE tbpalpites (\n'+
-        '  id BIGSERIAL PRIMARY KEY,\n'+
-        '  created_at TIMESTAMPTZ DEFAULT NOW(),\n'+
-        '  jogo_id TEXT NOT NULL,\n'+
-        '  jogo TEXT NOT NULL,\n'+
-        '  nome TEXT NOT NULL,\n'+
-        '  email TEXT NOT NULL,\n'+
-        '  data_voto TEXT,\n'+
-        '  placar_casa INTEGER,\n'+
-        '  placar_fora INTEGER,\n'+
-        '  pontuacao INTEGER DEFAULT 0\n'+
-        ');\n'+
-        'ALTER TABLE tbpalpites ENABLE ROW LEVEL SECURITY;\n'+
-        'CREATE POLICY "p_all" ON tbpalpites FOR ALL USING (true) WITH CHECK (true);';
-      results.push('');
-      results.push('⚠️ Execute este SQL para recriar a tabela corretamente:');
-      results.push(fixSql);
-    }
-  }catch(e){ results.push('❌ tbpalpites INSERT exception: '+e.message); }
-
-  // Display results
-  const box = document.getElementById('sqlBox');
-  const html = results.map(r=>{
-    if(r.startsWith('✅')) return '<div style="color:var(--green);font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:1px;margin-bottom:6px;">'+r+'</div>';
-    if(r.startsWith('❌')) return '<div style="color:var(--red);font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:1px;margin-bottom:6px;">'+r+'</div>';
-    if(r.startsWith('⚠️')) return '<div style="color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1px;margin:8px 0 4px;">'+r+'</div>';
-    if(r==='') return '<br>';
-    return '<pre style="background:var(--el);padding:10px;border-radius:6px;font-size:11px;color:#e8eaf0;white-space:pre-wrap;margin-bottom:8px;"><code>'+r+'</code></pre>'+
-           '<button class="btn btn-blue" style="font-size:11px;margin-bottom:8px;" onclick="navigator.clipboard.writeText(`'+r.replace(/`/g,'\\`')+'`).then(()=>toast('✅ SQL copiado!','success'))">📋 Copiar SQL de Reparo</button>';
-  }).join('');
-
-  box.innerHTML = '<div style="margin-top:12px;padding:14px;background:var(--el);border-radius:10px;border:1px solid var(--bd);">'
-    +'<div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">🔍 Resultado do Diagnóstico</div>'
-    +html+'</div>';
-  toast('🔍 Diagnóstico concluído!','success');
-}
+// ════════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════════
+loadCfg();
+loadJogos().then(function() { renderVote(); });
 
 </script>
+
 
 <!-- MODAL: CADASTRO / EDIÇÃO DE JOGO -->
 <div class="modal-overlay" id="jogoModal">
